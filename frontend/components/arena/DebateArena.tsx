@@ -96,7 +96,14 @@ export function DebateArena({ debateId }: { debateId: string }) {
               {isConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
               {isConnected ? "Live" : "Offline"}
             </div>
-            {isComplete && <ExportReport debateId={debateId} />}
+            {isComplete && store.debate && (
+              <ExportReport
+                debate={store.debate}
+                messages={store.messages}
+                scores={store.scores}
+                verdict={store.verdict}
+              />
+            )}
           </div>
         </div>
         <DebateStage current={store.currentStage} />
