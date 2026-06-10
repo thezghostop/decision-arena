@@ -149,20 +149,18 @@ export function DebateArena({ debateId }: { debateId: string }) {
               <h3 className="text-sm font-semibold text-white mb-3">Expert Panel</h3>
               <div className="space-y-2">
                 {store.debate.panel.map((agent) => (
-                  <div key={agent.id} className="flex items-center gap-3">
+                  <div key={agent.id} className="flex items-start gap-3">
                     <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 mt-0.5"
                       style={{ backgroundColor: agent.color }}
                     >
                       {agent.name.slice(0, 2).toUpperCase()}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{agent.name}</p>
-                      <p className="text-xs text-slate-500 truncate">{agent.role}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-white">{agent.name}</p>
+                      <p className="text-xs text-slate-400">{agent.role}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{agent.bias}</p>
                     </div>
-                    <span className="text-xs ml-auto shrink-0 text-slate-400 capitalize">
-                      {agent.bias}
-                    </span>
                   </div>
                 ))}
               </div>
