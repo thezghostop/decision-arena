@@ -90,7 +90,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
       <div className="space-y-3 sticky top-0 z-10 bg-[#0a0a0f] pb-3 pt-1">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-xl font-bold text-white leading-tight">
+            <h1 className="text-base md:text-xl font-bold text-white leading-tight">
               {store.debate ? truncate(store.debate.question, 80) : "Loading…"}
             </h1>
             {store.debate && (
@@ -118,13 +118,13 @@ export function DebateArena({ debateId }: { debateId: string }) {
       </div>
 
       {/* Main debate layout: messages + sidebar */}
-      <div className="flex gap-6">
+      <div className="flex flex-col md:flex-row gap-6">
         {/* Messages */}
         <div className="flex-1 min-w-0">
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="space-y-3 min-h-96 max-h-[calc(100vh-280px)] overflow-y-auto pr-2"
+            className="space-y-3 min-h-96 max-h-[60vh] md:max-h-[calc(100vh-280px)] overflow-y-auto pr-2"
           >
             <AnimatePresence initial={false}>
               {store.messages.map((msg) => (
@@ -151,7 +151,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
         </div>
 
         {/* Sidebar */}
-        <div className="w-80 shrink-0 space-y-4">
+        <div className="w-full md:w-80 md:shrink-0 space-y-4">
           {store.debate && store.debate.panel.length > 0 && (
             <div className="glass rounded-xl p-4 overflow-hidden">
               <h3 className="text-sm font-semibold text-white mb-3">Expert Panel</h3>
