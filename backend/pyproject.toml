@@ -1,0 +1,59 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = ["E","W","F","I","B","C4","UP","S"]
+ignore = ["S101", "S311"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+disallow_untyped_defs = true
+warn_return_any = false
+warn_unused_ignores = true
+exclude = ["tests/"]
+
+[tool.pylint.main]
+py-version = "3.12"
+jobs = 1
+
+[tool.pylint."messages control"]
+disable = ["missing-docstring","too-few-public-methods","too-many-arguments","too-many-instance-attributes","import-error","fixme"]
+
+[tool.pylint.format]
+max-line-length = 100
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+skips = ["B101", "B311"]
+
+[tool.vulture]
+min_confidence = 80
+paths = ["app"]
+ignore_names = ["cls", "kwargs", "args"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=30"
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", ".venv/*"]
+
+[tool.coverage.report]
+fail_under = 30
+show_missing = true
