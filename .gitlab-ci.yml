@@ -1,0 +1,76 @@
+stages:
+  - lint
+  - format
+  - type_check
+  - security
+  - test
+  - coverage
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+    - backend/.venv/
+
+.python_base:
+  image: python:3.12-slim
+  before_script:
+    - cd backend
+    - pip install --quiet virtualenv
+    - python -m venv .venv
+    - source .venv/bin/activate
+    - pip install --quiet -r requirements.txt
+    - pip install --quiet ruff mypy pylint flake8 bandit vulture semgrep pyupgrade pytest pytest-asyncio pytest-cov coverage pip-audit
+
+lint:
+  extends: .python_base
+  stage: lint
+  script:
+    - ruff check app/ tests/
+    - flake8 app/ tests/ --max-line-length=100 --extend-ignore=E203,W503
+    - pylint app/ --fail-under=5.0
+  allow_failure: false
+
+format:
+  extends: .python_base
+  stage: format
+  script:
+    - ruff format --check app/ tests/
+  allow_failure: false
+
+type_check:
+  extends: .python_base
+  stage: type_check
+  script:
+    - mypy app/ --ignore-missing-imports
+  allow_failure: true
+
+security:
+  extends: .python_base
+  stage: security
+  script:
+    - bandit -r app/ -c pyproject.toml
+    - pip-audit --requirement requirements.txt --ignore-vuln PYSEC-2024-47 || true
+  allow_failure: true
+
+test:
+  extends: .python_base
+  stage: test
+  script:
+    - pytest tests/ -v --tb=short
+
+coverage:
+  extends: .python_base
+  stage: coverage
+  script:
+    - pytest tests/ --cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under=30
+    - coverage report
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage.xml
+    when: always
