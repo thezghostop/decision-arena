@@ -1,0 +1,64 @@
+# ââ Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+ENV/
+.Python
+*.pyc
+
+# ââ Type checking / linting
+.editorconfig
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.bandit
+.semgrep/
+
+# ââ Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+!frontend/.env.local.example
+
+# ââ Node / Next.js
+node_modules/
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/.vercel/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+
+# ââ IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ââ Logs
+*.log
+logs/
+
+# ââ Secrets
+*.pem
+*.key
+*.p12
+*.pfx
+service-account*.json
