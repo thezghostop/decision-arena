@@ -17,13 +17,12 @@ export function ExportReport({ debateId }: { debateId: string }) {
       if (!token) throw new Error("Not authenticated");
       setAuthToken(token);
 
-      const blob = await exportDebateReport(debateId);
-      const url = URL.createObjectURL(blob);
+      const downloadUrl = await exportDebateReport(debateId);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = downloadUrl;
       a.download = `decision-arena-${debateId}.pdf`;
+      a.target = "_blank";
       a.click();
-      URL.revokeObjectURL(url);
       toast.success("Report downloaded");
     } catch {
       toast.error("Failed to export report");

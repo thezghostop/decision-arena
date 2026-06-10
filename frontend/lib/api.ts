@@ -93,12 +93,11 @@ export async function injectAudienceQuestion(
   );
 }
 
-export async function exportDebateReport(debateId: string): Promise<Blob> {
-  const { data } = await apiClient.get(
-    `/api/v1/debates/${debateId}/report`,
-    { responseType: "blob" }
+export async function exportDebateReport(debateId: string): Promise<string> {
+  const { data } = await apiClient.post<{ download_url: string }>(
+    `/api/v1/reports/${debateId}`
   );
-  return data as Blob;
+  return data.download_url;
 }
 
 export async function healthCheck(): Promise<boolean> {
