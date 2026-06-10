@@ -1,6 +1,6 @@
 # Decision Arena
 
-🏆 Built for the 1st Hackathon of the Swecha Internship Programme — a national-level AI challenge focused on intelligent decision-making tools.
+🏆 Built for the 2nd Hackathon of the Swecha Internship Programme — a national-level AI challenge focused on intelligent decision-making tools.
 
 An AI-powered decision simulation platform where multiple expert agents debate, challenge, and stress-test your most important decisions — exposing blind spots through structured adversarial deliberation.
 
