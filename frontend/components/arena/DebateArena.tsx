@@ -6,7 +6,7 @@ import { AnimatePresence } from "framer-motion";
 import { Wifi, WifiOff, Loader2 } from "lucide-react";
 import { useDebateStore } from "@/store/debateStore";
 import { useDebateWebSocket } from "@/hooks/useWebSocket";
-import { getDebate, getMessages, setAuthToken } from "@/lib/api";
+import { getDebate, getMessages, getScores, getVerdict, setAuthToken } from "@/lib/api";
 import { MessageBubble } from "./MessageBubble";
 import { Scoreboard } from "./Scoreboard";
 import { AudienceInput } from "./AudienceInput";
@@ -43,8 +43,16 @@ export function DebateArena({ debateId }: { debateId: string }) {
         if (!mounted) return;
         store.setDebate(debate);
         if (debate.status === "completed") {
-          const msgs = await getMessages(debateId);
-          if (mounted) msgs.forEach((m) => store.addMessage(m));
+          const [msgs, scoresData, verdictData] = await Promise.all([
+            getMessages(debateId),
+            getScores(debateId),
+            getVerdict(debateId),
+          ]);
+          if (mounted) {
+            msgs.forEach((m) => store.addMessage(m));
+            if (scoresData) store.setScores(scoresData);
+            if (verdictData) store.setVerdict(verdictData);
+          }
         }
       } catch (err) {
         console.error("Failed to load debate:", err);
@@ -79,7 +87,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="space-y-3">
+      <div className="space-y-3 sticky top-0 z-10 bg-[#0a0a0f] pb-3 pt-1">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-white leading-tight">

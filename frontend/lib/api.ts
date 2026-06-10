@@ -93,6 +93,20 @@ export async function injectAudienceQuestion(
   );
 }
 
+export async function getScores(debateId: string) {
+  const { data } = await apiClient.get(`/api/v1/debates/${debateId}/scores`);
+  return data;
+}
+
+export async function getVerdict(debateId: string) {
+  try {
+    const { data } = await apiClient.get(`/api/v1/reports/${debateId}/verdict`);
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export async function exportDebateReport(debateId: string): Promise<string> {
   const { data } = await apiClient.post<{ download_url: string }>(
     `/api/v1/reports/${debateId}`
