@@ -143,9 +143,9 @@ export function DebateArena({ debateId }: { debateId: string }) {
         </div>
 
         {/* Sidebar */}
-        <div className="w-72 shrink-0 space-y-4">
+        <div className="w-80 shrink-0 space-y-4">
           {store.debate && store.debate.panel.length > 0 && (
-            <div className="glass rounded-xl p-4">
+            <div className="glass rounded-xl p-4 overflow-hidden">
               <h3 className="text-sm font-semibold text-white mb-3">Expert Panel</h3>
               <div className="space-y-2">
                 {store.debate.panel.map((agent) => (
@@ -159,7 +159,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-white">{agent.name}</p>
                       <p className="text-xs text-slate-400">{agent.role}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{agent.bias}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed break-words">{agent.bias}</p>
                     </div>
                   </div>
                 ))}
