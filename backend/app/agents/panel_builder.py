@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+
 from app.agents.base import BaseAgent
 from app.models.debate import AgentConfig, DebateCategory, DebateMode
 
@@ -80,7 +81,12 @@ EXPERT_LIBRARY: list[AgentConfig] = [
         color="#8B5CF6",
         bias="Architecture, security, technical strategy, build vs buy",
         communication_style="analytical",
-        expertise_domains=["technology strategy", "architecture", "security", "engineering culture"],
+        expertise_domains=[
+            "technology strategy",
+            "architecture",
+            "security",
+            "engineering culture",
+        ],
     ),
     AgentConfig(
         id="cmo",
@@ -213,7 +219,7 @@ class PanelBuilderAgent(BaseAgent):
                 f"Default suggestions: {defaults}\n\n"
                 "Pick exactly 4 expert IDs that would create the most insightful, "
                 "diverse, and adversarial debate for this specific question.\n"
-                "Return ONLY: {\"panel\": [\"id1\", \"id2\", \"id3\", \"id4\"]}"
+                'Return ONLY: {"panel": ["id1", "id2", "id3", "id4"]}'
             )
             raw = await self.generate(prompt, temperature=0.4)
             start = raw.find("{")
@@ -234,7 +240,7 @@ class PanelBuilderAgent(BaseAgent):
             f"Classify this decision question into exactly ONE category.\n"
             f"Question: '{question}'\n"
             f"Categories: career, business, tech, policy, personal, other\n\n"
-            "Return ONLY: {\"category\": \"business\", \"confidence\": 0.87}"
+            'Return ONLY: {"category": "business", "confidence": 0.87}'
         )
         try:
             raw = await self.generate(prompt, temperature=0.1)

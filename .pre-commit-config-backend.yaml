@@ -65,5 +65,5 @@ repos:
     rev: v2.11
     hooks:
       - id: vulture
-        args: ["backend/app/", "--min-confidence", "80"]
+        args: ["backend/app/", "--min-confidence", "80", "--ignore-names", "cls,background_tasks,kwargs,args"]
         files: ^backend/

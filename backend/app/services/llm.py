@@ -6,7 +6,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class LLMService:
         if settings.groq_api_key:
             try:
                 from openai import AsyncOpenAI
+
                 self._groq_client = AsyncOpenAI(
                     base_url="https://api.groq.com/openai/v1",
                     api_key=settings.groq_api_key,
@@ -39,6 +41,7 @@ class LLMService:
         # Ollama (local fallback)
         try:
             from openai import AsyncOpenAI
+
             self._ollama_client = AsyncOpenAI(
                 base_url=f"{settings.ollama_base_url}/v1",
                 api_key="ollama",
@@ -51,6 +54,7 @@ class LLMService:
         if settings.gemini_api_key:
             try:
                 import google.generativeai as genai
+
                 genai.configure(api_key=settings.gemini_api_key)
                 self._gemini_client = genai.GenerativeModel(
                     model_name="gemini-2.5-flash",
@@ -68,6 +72,7 @@ class LLMService:
         if settings.openai_api_key and not settings.openai_api_key.startswith("sk-replace"):
             try:
                 from openai import AsyncOpenAI
+
                 self._openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
                 logger.info("OpenAI fallback initialized.")
             except Exception as exc:
@@ -90,8 +95,8 @@ class LLMService:
         self,
         system_prompt: str,
         user_prompt: str,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         primary = self._primary_client()
         if primary:
@@ -108,7 +113,9 @@ class LLMService:
                 logger.error("Gemini generate failed: %s", exc)
 
         if self._openai_client:
-            return await self._compat_generate(self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature, max_tokens)
+            return await self._compat_generate(
+                self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature, max_tokens
+            )
 
         raise RuntimeError("No LLM available.")
 
@@ -116,7 +123,7 @@ class LLMService:
         self,
         system_prompt: str,
         user_prompt: str,
-        temperature: Optional[float] = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         primary = self._primary_client()
         if primary:
@@ -137,7 +144,9 @@ class LLMService:
                 logger.error("Gemini stream failed: %s", exc)
 
         if self._openai_client:
-            async for token in self._compat_stream(self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature):
+            async for token in self._compat_stream(
+                self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature
+            ):
                 yield token
             return
 
@@ -151,8 +160,8 @@ class LLMService:
         model: str,
         system_prompt: str,
         user_prompt: str,
-        temperature: Optional[float],
-        max_tokens: Optional[int],
+        temperature: float | None,
+        max_tokens: int | None,
     ) -> str:
         response = await client.chat.completions.create(
             model=model,
@@ -171,7 +180,7 @@ class LLMService:
         model: str,
         system_prompt: str,
         user_prompt: str,
-        temperature: Optional[float],
+        temperature: float | None,
     ) -> AsyncIterator[str]:
         stream = await client.chat.completions.create(
             model=model,
@@ -194,10 +203,11 @@ class LLMService:
         self,
         system_prompt: str,
         user_prompt: str,
-        temperature: Optional[float],
-        max_tokens: Optional[int],
+        temperature: float | None,
+        max_tokens: int | None,
     ) -> str:
         import google.generativeai as genai
+
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             generation_config={
@@ -211,9 +221,10 @@ class LLMService:
         return response.text
 
     async def _gemini_stream(
-        self, system_prompt: str, user_prompt: str, temperature: Optional[float]
+        self, system_prompt: str, user_prompt: str, temperature: float | None
     ) -> AsyncIterator[str]:
         import google.generativeai as genai
+
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             generation_config={
@@ -230,7 +241,7 @@ class LLMService:
 
 
 # Singleton
-_llm_service: Optional[LLMService] = None
+_llm_service: LLMService | None = None
 
 
 def get_llm_service() -> LLMService:

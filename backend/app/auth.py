@@ -31,8 +31,9 @@ async def _fetch_jwks() -> dict:
             timeout=10,
         )
         resp.raise_for_status()
-        _jwks_cache = resp.json()
-        return _jwks_cache
+        data: dict = resp.json()
+        _jwks_cache = data
+        return data
 
 
 async def get_current_user(

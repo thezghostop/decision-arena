@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from supabase import create_client, Client
+from supabase import create_client, Client  # type: ignore[attr-defined]
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ class DatabaseService:
         )
         return result.data or []
 
-    async def update_debate_status(self, debate_id: str, status: str, stage: str = None) -> None:
+    async def update_debate_status(self, debate_id: str, status: str, stage: Optional[str] = None) -> None:
         payload: dict = {"status": status}
         if stage:
             payload["current_stage"] = stage

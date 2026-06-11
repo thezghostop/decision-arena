@@ -19,6 +19,7 @@ from app.agents.fact_checker import FactCheckerAgent
 from app.agents.scorer import ScorerAgent
 from app.models.debate import AgentConfig, DebateStage
 from app.models.message import MessageType
+from app.database import DatabaseService
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,7 @@ class DebateOrchestrator:
         mode: str,
         panel: list[AgentConfig],
         on_event: Callable[[WSEvent], None],
-        db_service: Optional[object] = None,
+        db_service: Optional[DatabaseService] = None,
         language: str = "en",
     ) -> None:
         self.debate_id = debate_id
@@ -140,8 +141,6 @@ class DebateOrchestrator:
         for i, asker_cfg in enumerate(self.panel):
             if self._stopped:
                 return
-            # Pick a target (next expert in cycle)
-            target_idx = (i + 1) % len(self.panel)
             expert = self.experts[asker_cfg.id]
             msg_id = str(uuid.uuid4())
 
@@ -157,7 +156,9 @@ class DebateOrchestrator:
                 self._emit("token", {"messageId": msg_id, "content": token})
                 full_content += token
 
-            await self._finalize_message(msg_id, asker_cfg, DebateStage.cross_examination, full_content, MessageType.question)
+            await self._finalize_message(
+                msg_id, asker_cfg, DebateStage.cross_examination, full_content, MessageType.question
+            )
 
     async def _run_audience_intervention(self, audience_question: str) -> None:
         """All experts respond to the injected audience question."""
@@ -181,7 +182,9 @@ class DebateOrchestrator:
                 return
             expert = self.experts[agent_cfg.id]
             msg_id = str(uuid.uuid4())
-            self._emit_message_start(msg_id, agent_cfg, DebateStage.audience_intervention, MessageType.argument)
+            self._emit_message_start(
+                msg_id, agent_cfg, DebateStage.audience_intervention, MessageType.argument
+            )
             full_content = ""
             async for token in expert.speak(
                 stage=DebateStage.audience_intervention,
@@ -193,7 +196,9 @@ class DebateOrchestrator:
                     return
                 self._emit("token", {"messageId": msg_id, "content": token})
                 full_content += token
-            await self._finalize_message(msg_id, agent_cfg, DebateStage.audience_intervention, full_content, MessageType.argument)
+            await self._finalize_message(
+                msg_id, agent_cfg, DebateStage.audience_intervention, full_content, MessageType.argument
+            )
 
     async def _run_scoring(self) -> None:
         """Score all agents based on contributions so far."""

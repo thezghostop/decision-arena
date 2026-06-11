@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
+
 from app.services.llm import get_llm_service
 
 
@@ -25,8 +26,8 @@ class BaseAgent(ABC):
     async def generate(
         self,
         user_prompt: str,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         return await self._llm.generate(
             system_prompt=self.system_prompt,

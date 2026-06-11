@@ -1,8 +1,7 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
 from datetime import datetime
 from enum import Enum
-import uuid
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class DebateCategory(str, Enum):
@@ -47,12 +46,12 @@ class AgentConfig(BaseModel):
     bias: str
     communication_style: str
     expertise_domains: list[str]
-    avatar_seed: Optional[str] = None
+    avatar_seed: str | None = None
 
 
 class ClassifyRequest(BaseModel):
     question: str = Field(..., min_length=10, max_length=1000)
-    mode: Optional[DebateMode] = None
+    mode: DebateMode | None = None
 
 
 class ClassifyResponse(BaseModel):
@@ -88,7 +87,7 @@ class DebateResponse(BaseModel):
     current_stage: DebateStage
     audience_questions: list[str]
     created_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 class CreateDebateResponse(BaseModel):

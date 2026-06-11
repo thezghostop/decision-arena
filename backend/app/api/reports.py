@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import logging
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
+
 from app.auth import get_current_user
-from app.database import DatabaseService
-from app.models.verdict import VerdictResponse, ShareLinkResponse, ReportResponse, PublicReportResponse
-from app.services.report_generator import generate_pdf_report
 from app.config import get_settings
+from app.database import DatabaseService
+from app.models.verdict import (
+    PublicReportResponse,
+    ReportResponse,
+    ShareLinkResponse,
+    VerdictResponse,
+)
+from app.services.report_generator import generate_pdf_report
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/reports", tags=["reports"])
@@ -99,6 +106,7 @@ async def get_verdict(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 async def _get_and_authorize_debate(db: DatabaseService, debate_id: str, user: dict) -> dict:
     debate = await db.get_debate(debate_id)
     if not debate:
@@ -119,14 +127,18 @@ async def _get_full_debate(db: DatabaseService, debate_id: str, user: dict):
 
 
 def _generate_slug(length: int = 12) -> str:
-    import random, string
+    import random
+    import string
+
     chars = string.ascii_lowercase + string.digits
     return "".join(random.choices(chars, k=length))
 
 
 def _map_verdict(v: dict) -> VerdictResponse:
     from datetime import datetime
-    from app.models.verdict import HeatmapItem, HeatmapCategory
+
+    from app.models.verdict import HeatmapItem
+
     return VerdictResponse(
         id=v.get("id", str(uuid.uuid4())),
         debate_id=v["debate_id"],
@@ -138,12 +150,15 @@ def _map_verdict(v: dict) -> VerdictResponse:
         confidence_score=v.get("confidence_score", 0.5),
         heatmap_data=[HeatmapItem(**h) for h in v.get("heatmap_data", []) if isinstance(h, dict)],
         executive_summary=v.get("executive_summary", ""),
-        created_at=v["created_at"] if isinstance(v["created_at"], datetime) else datetime.fromisoformat(v["created_at"]),
+        created_at=v["created_at"]
+        if isinstance(v["created_at"], datetime)
+        else datetime.fromisoformat(v["created_at"]),
     )
 
 
 def _map_score_public(s: dict):
     from app.models.verdict import AgentScoreResponse
+
     return AgentScoreResponse(
         agent_id=s["agent_id"],
         agent_name=s.get("agent_name", s["agent_id"]),

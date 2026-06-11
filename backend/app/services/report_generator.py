@@ -64,7 +64,10 @@ def _build_pdf(debate: dict, messages: list[dict], scores: list[dict], verdict: 
     story.append(Paragraph("Decision Arena — Debate Report", title_style))
 
     # Question
-    q_style = ParagraphStyle("Question", parent=styles["Normal"], fontSize=14, textColor=colors.HexColor("#1E293B"), spaceBefore=4, spaceAfter=12)
+    q_style = ParagraphStyle(
+        "Question", parent=styles["Normal"],
+        fontSize=14, textColor=colors.HexColor("#1E293B"), spaceBefore=4, spaceAfter=12,
+    )
     story.append(Paragraph(f'<b>Question:</b> {debate.get("question", "")}', q_style))
     story.append(Paragraph(
         f'Category: {debate.get("category", "")} | Mode: {debate.get("mode", "")} | '

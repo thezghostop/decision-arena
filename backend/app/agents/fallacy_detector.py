@@ -35,7 +35,8 @@ class FallacyDetectorAgent(BaseAgent):
             "Return ONLY valid JSON:\n"
             '{"fallacies": [\n'
             '  {\n'
-            '    "type": "strawman|false_dilemma|circular_reasoning|ad_hominem|appeal_to_authority|hasty_generalization|slippery_slope|false_equivalence",\n'
+            '    "type": "strawman|false_dilemma|circular_reasoning|ad_hominem'
+            '|appeal_to_authority|hasty_generalization|slippery_slope|false_equivalence",\n'
             '    "excerpt": "exact short quote from the text",\n'
             '    "explanation": "1-2 sentence explanation of the fallacy",\n'
             '    "severity": "low|medium|high"\n'
