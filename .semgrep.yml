@@ -1,0 +1,16 @@
+rules:
+  - id: hardcoded-secret
+    patterns:
+      - pattern: $KEY = "..."
+    message: Possible hardcoded secret in $KEY
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+  - id: debug-print-left
+    pattern: print(...)
+    message: Remove debug print statements before production
+    languages: [python]
+    severity: INFO
+    metadata:
+      category: quality
