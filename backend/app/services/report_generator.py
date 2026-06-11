@@ -110,7 +110,7 @@ def _build_pdf(debate: dict, messages: list[dict], scores: list[dict], verdict: 
 
     # Verdict sections
     if verdict:
-        for section, title, color in [
+        for section, title, _color in [
             ("consensus_areas", "Consensus Areas", "#10B981"),
             ("risks", "Key Risks", "#EF4444"),
             ("opportunities", "Opportunities", "#2563EB"),

@@ -111,8 +111,6 @@ class DebateOrchestrator:
 
     async def _run_stage(self, stage: DebateStage) -> None:
         """Run all expert contributions for a given stage."""
-        context = self._build_context()
-
         # Expert contributions
         if stage == DebateStage.cross_examination:
             await self._run_cross_examination()
@@ -139,15 +137,11 @@ class DebateOrchestrator:
 
     async def _run_cross_examination(self) -> None:
         """Each expert asks ONE question to another (round-robin)."""
-        import random
-        panel_ids = [c.id for c in self.panel]
-
         for i, asker_cfg in enumerate(self.panel):
             if self._stopped:
                 return
             # Pick a target (next expert in cycle)
             target_idx = (i + 1) % len(self.panel)
-            target_cfg = self.panel[target_idx]
             expert = self.experts[asker_cfg.id]
             msg_id = str(uuid.uuid4())
 

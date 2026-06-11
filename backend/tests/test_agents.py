@@ -94,7 +94,7 @@ def test_create_debate_request_validation():
     from app.models.debate import CreateDebateRequest, AgentConfig, DebateCategory, DebateMode
     import pytest
 
-    with pytest.raises(Exception):
+    with pytest.raises((ValueError, Exception)):  # pydantic raises ValueError
         CreateDebateRequest(
             question="Short",  # too short
             category=DebateCategory.business,

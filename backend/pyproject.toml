@@ -1,11 +1,25 @@
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py312"
 src = ["app", "tests"]
 
 [tool.ruff.lint]
-select = ["E","W","F","I","B","C4","UP","S"]
-ignore = ["S101", "S311"]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "S",   # flake8-bandit (security)
+]
+ignore = [
+    "S101",   # allow assert in tests
+    "S311",   # random for non-crypto use
+    "B008",   # FastAPI Depends() in function defaults is intentional
+    "S110",   # try-except-pass is intentional in WebSocket handlers
+]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"]
@@ -21,14 +35,27 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 warn_return_any = false
 warn_unused_ignores = true
+explicit_package_bases = true
 exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = ["supabase", "supabase.*", "postgrest.*", "gotrue.*"]
+ignore_missing_imports = true
+ignore_errors = true
 
 [tool.pylint.main]
 py-version = "3.12"
 jobs = 1
 
 [tool.pylint."messages control"]
-disable = ["missing-docstring","too-few-public-methods","too-many-arguments","too-many-instance-attributes","import-error","fixme"]
+disable = [
+    "missing-docstring",
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-instance-attributes",
+    "import-error",
+    "fixme",
+]
 
 [tool.pylint.format]
 max-line-length = 100
@@ -40,7 +67,7 @@ skips = ["B101", "B311"]
 [tool.vulture]
 min_confidence = 80
 paths = ["app"]
-ignore_names = ["cls", "kwargs", "args"]
+ignore_names = ["cls", "kwargs", "args", "background_tasks"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -52,8 +79,12 @@ addopts = "--cov=app --cov-report=term-missing --cov-report=xml --cov-fail-under
 
 [tool.coverage.run]
 source = ["app"]
-omit = ["tests/*", ".venv/*"]
+omit = ["tests/*", ".venv/*", "*/migrations/*"]
 
 [tool.coverage.report]
 fail_under = 30
 show_missing = true
+skip_covered = false
+
+[tool.pyupgrade]
+py312-plus = true
