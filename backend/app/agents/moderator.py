@@ -17,19 +17,35 @@ STAGE_INTROS: dict[str, str] = {
     "verdict": "The Verdict",
 }
 
+LANGUAGE_INSTRUCTIONS: dict[str, str] = {
+    "en": "",
+    "hi": (
+        "\n\nLANGUAGE REQUIREMENT: You MUST respond entirely in Hindi (हिन्दी) using Devanagari script. "
+        "All narration, introductions, and summaries must be in Hindi. "
+        "For the JSON verdict response, all text values must be in Hindi — only JSON keys remain in English."
+    ),
+    "kn": (
+        "\n\nLANGUAGE REQUIREMENT: You MUST respond entirely in Kannada (ಕನ್ನಡ) using Kannada script. "
+        "All narration, introductions, and summaries must be in Kannada. "
+        "For the JSON verdict response, all text values must be in Kannada — only JSON keys remain in English."
+    ),
+}
+
 
 class ModeratorAgent(BaseAgent):
     """Controls debate structure and synthesizes outcomes."""
 
-    def __init__(self) -> None:
+    def __init__(self, language: str = "en") -> None:
         super().__init__(
             agent_id="moderator",
             name="The Moderator",
             role="Debate Moderator",
         )
+        self.language = language
 
     @property
     def system_prompt(self) -> str:
+        lang_instruction = LANGUAGE_INSTRUCTIONS.get(self.language, "")
         return (
             "You are the Moderator of Decision Arena — an elite AI-powered deliberation platform.\n\n"
             "Your responsibilities:\n"
@@ -40,6 +56,7 @@ class ModeratorAgent(BaseAgent):
             "- Synthesize the final verdict with intellectual rigor\n\n"
             "STYLE: Authoritative, concise, neutral. Never take sides. "
             "Keep introductions to 2–3 sentences. Write in natural prose.\n"
+            f"{lang_instruction}"
         )
 
     async def introduce_stage(
@@ -80,6 +97,7 @@ class ModeratorAgent(BaseAgent):
         debate_summary: str,
     ) -> str:
         """Non-streaming verdict synthesis — returns full JSON-structured verdict."""
+        lang_instruction = LANGUAGE_INSTRUCTIONS.get(self.language, "")
         prompt = (
             f"Decision under debate: '{question}'\n\n"
             f"Full debate summary:\n{debate_summary}\n\n"
@@ -100,5 +118,6 @@ class ModeratorAgent(BaseAgent):
             '  ]\n'
             '}\n\n'
             "Generate at least 3 items per category. confidence_score must be between 0.0 and 1.0."
+            f"{lang_instruction}"
         )
         return await self.generate(prompt, temperature=0.3, max_tokens=1200)

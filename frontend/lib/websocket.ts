@@ -24,8 +24,12 @@ export class DebateWebSocketManager {
     this.establishConnection();
   }
 
+  private get language(): string {
+    try { return localStorage.getItem("da_locale") || "en"; } catch { return "en"; }
+  }
+
   private establishConnection(): void {
-    const url = `${this.wsUrl}/ws/debate/${this.debateId}?token=${this.token}`;
+    const url = `${this.wsUrl}/ws/debate/${this.debateId}?token=${this.token}&lang=${this.language}`;
     this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {

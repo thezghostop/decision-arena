@@ -23,6 +23,7 @@ async def debate_websocket(
     websocket: WebSocket,
     debate_id: str,
     token: str = Query(...),
+    lang: str = Query(default="en"),
 ) -> None:
     # Validate token
     try:
@@ -50,7 +51,7 @@ async def debate_websocket(
     # Completed debate → Q&A mode (stay open, experts respond to new questions)
     if debate.get("status") == "completed":
         await websocket.send_text(json.dumps({"type": "debate_complete"}))
-        await _qa_mode(websocket, debate, db)
+        await _qa_mode(websocket, debate, db, lang)
         return
 
     # Already running in this process → skip
@@ -75,6 +76,7 @@ async def debate_websocket(
         panel=panel,
         on_event=on_event,
         db_service=db,
+        language=lang,
     )
 
     active[debate_id] = orchestrator
@@ -101,13 +103,13 @@ async def debate_websocket(
             pass
 
 
-async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService) -> None:
+async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService, language: str = "en") -> None:
     """Keep the WS open after debate completion. Each audience question gets
     a fresh round of expert responses streamed back in real time."""
     from app.agents.expert import ExpertAgent
 
     panel = [AgentConfig(**p) if isinstance(p, dict) else p for p in debate.get("panel", [])]
-    experts = {cfg.id: ExpertAgent(cfg) for cfg in panel}
+    experts = {cfg.id: ExpertAgent(cfg, language=language) for cfg in panel}
     debate_id = debate["id"]
     question = debate["question"]
 

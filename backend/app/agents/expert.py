@@ -32,20 +32,36 @@ STAGE_INSTRUCTIONS: dict[str, str] = {
     ),
 }
 
+LANGUAGE_INSTRUCTIONS: dict[str, str] = {
+    "en": "",
+    "hi": (
+        "\n\nLANGUAGE REQUIREMENT: You MUST respond entirely in Hindi (हिन्दी) using Devanagari script. "
+        "All your arguments, examples, analysis, and reasoning must be written in Hindi. "
+        "You may use English only for proper nouns, brand names, or technical acronyms that have no Hindi equivalent."
+    ),
+    "kn": (
+        "\n\nLANGUAGE REQUIREMENT: You MUST respond entirely in Kannada (ಕನ್ನಡ) using Kannada script. "
+        "All your arguments, examples, analysis, and reasoning must be written in Kannada. "
+        "You may use English only for proper nouns, brand names, or technical acronyms that have no Kannada equivalent."
+    ),
+}
+
 
 class ExpertAgent(BaseAgent):
     """A dynamically configured expert persona."""
 
-    def __init__(self, config: AgentConfig) -> None:
+    def __init__(self, config: AgentConfig, language: str = "en") -> None:
         super().__init__(
             agent_id=config.id,
             name=config.name,
             role=config.role,
         )
         self.config = config
+        self.language = language
 
     @property
     def system_prompt(self) -> str:
+        lang_instruction = LANGUAGE_INSTRUCTIONS.get(self.language, "")
         return (
             f"You are {self.name}, a {self.role}.\n\n"
             f"EXPERTISE: {', '.join(self.config.expertise_domains)}\n"
@@ -59,6 +75,7 @@ class ExpertAgent(BaseAgent):
             "- Keep responses focused and under 250 words unless instructed otherwise.\n"
             "- Never break character. You are this expert, not an AI playing a role.\n"
             "- Do not use bullet points or headers — write in natural, spoken prose.\n"
+            f"{lang_instruction}"
         )
 
     async def speak(

@@ -46,6 +46,7 @@ class DebateOrchestrator:
         panel: list[AgentConfig],
         on_event: Callable[[WSEvent], None],
         db_service: Optional[object] = None,
+        language: str = "en",
     ) -> None:
         self.debate_id = debate_id
         self.question = question
@@ -53,9 +54,10 @@ class DebateOrchestrator:
         self.panel = panel
         self.on_event = on_event
         self.db = db_service
+        self.language = language
 
-        self.experts = {cfg.id: ExpertAgent(cfg) for cfg in panel}
-        self.moderator = ModeratorAgent()
+        self.experts = {cfg.id: ExpertAgent(cfg, language=language) for cfg in panel}
+        self.moderator = ModeratorAgent(language=language)
         self.fallacy_detector = FallacyDetectorAgent()
         self.fact_checker = FactCheckerAgent()
         self.scorer = ScorerAgent()
