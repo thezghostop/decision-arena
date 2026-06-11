@@ -138,7 +138,7 @@ class DebateOrchestrator:
 
     async def _run_cross_examination(self) -> None:
         """Each expert asks ONE question to another (round-robin)."""
-        for i, asker_cfg in enumerate(self.panel):
+        for asker_cfg in self.panel:
             if self._stopped:
                 return
             expert = self.experts[asker_cfg.id]
