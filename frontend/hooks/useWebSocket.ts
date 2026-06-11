@@ -109,7 +109,6 @@ export function useDebateWebSocket(debateId: string | null) {
           "error",
         ] as const;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         cleanups = events.map((event) =>
           wsManager.on(event as any, handleMessage as any),
         );

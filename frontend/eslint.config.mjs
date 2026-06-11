@@ -24,7 +24,10 @@ const eslintConfig = [
   {
     rules: {
       // Downgrade to warnings — enforce style, not block CI
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_" },
+      ],
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/ban-ts-comment": "warn",
       "react/no-unescaped-entities": "warn",
