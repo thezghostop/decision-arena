@@ -5,14 +5,16 @@ import { usePathname } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
 import { Brain, History, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n, LOCALES } from "@/lib/i18n";
 
 export function Navbar() {
   const pathname = usePathname();
   const { isSignedIn } = useUser();
+  const { t, locale, setLocale } = useI18n();
 
   const links = [
-    { href: "/arena", label: "New Debate", icon: PlusCircle },
-    { href: "/history", label: "History", icon: History },
+    { href: "/arena", label: t("nav.newDebate"), icon: PlusCircle },
+    { href: "/history", label: t("nav.history"), icon: History },
   ];
 
   return (
@@ -41,6 +43,26 @@ export function Navbar() {
               {label}
             </Link>
           ))}
+
+          {/* Language switcher */}
+          <div className="flex items-center gap-0.5 ml-2 bg-[#111118] border border-[#1e1e2e] rounded-lg p-0.5">
+            {LOCALES.map((l) => (
+              <button
+                key={l.code}
+                onClick={() => setLocale(l.code)}
+                title={l.label}
+                className={cn(
+                  "px-2 py-1 rounded-md text-xs font-medium transition-colors",
+                  locale === l.code
+                    ? "bg-violet-600 text-white"
+                    : "text-slate-400 hover:text-white"
+                )}
+              >
+                {l.script}
+              </button>
+            ))}
+          </div>
+
           {isSignedIn && (
             <div className="ml-2">
               <UserButton />

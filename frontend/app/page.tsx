@@ -12,63 +12,66 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-
-const MODES = [
-  {
-    id: "standard",
-    title: "Standard Arena",
-    description: "Expert panel debates every angle of your decision",
-    icon: Brain,
-    color: "from-violet-600 to-purple-600",
-  },
-  {
-    id: "boardroom",
-    title: "Boardroom",
-    description: "You're the CEO. AI executives challenge your strategy",
-    icon: Users,
-    color: "from-blue-600 to-cyan-600",
-  },
-  {
-    id: "shark_tank",
-    title: "Shark Tank",
-    description: "AI investors tear apart your pitch — and rebuild it",
-    icon: Zap,
-    color: "from-orange-600 to-amber-600",
-  },
-  {
-    id: "policy_arena",
-    title: "Policy Arena",
-    description: "Economists and politicians debate the real-world impact",
-    icon: Shield,
-    color: "from-green-600 to-emerald-600",
-  },
-];
-
-const FEATURES = [
-  {
-    icon: Brain,
-    title: "Multi-Agent Debate",
-    description: "4–6 expert AI agents with distinct perspectives challenge your thinking",
-  },
-  {
-    icon: Shield,
-    title: "Fallacy Detection",
-    description: "Real-time logical fallacy detection across all arguments",
-  },
-  {
-    icon: BarChart3,
-    title: "Live Scoring",
-    description: "Dynamic scoring on logic, evidence, and persuasion",
-  },
-  {
-    icon: Sparkles,
-    title: "Decision Heatmap",
-    description: "Visual breakdown of risk vs opportunity across dimensions",
-  },
-];
+import { useI18n, LOCALES } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 export default function LandingPage() {
   const { isSignedIn } = useUser();
+  const { t, locale, setLocale } = useI18n();
+
+  const MODES = [
+    {
+      id: "standard",
+      title: t("modes.standard.title"),
+      description: t("modes.standard.description"),
+      icon: Brain,
+      color: "from-violet-600 to-purple-600",
+    },
+    {
+      id: "boardroom",
+      title: t("modes.boardroom.title"),
+      description: t("modes.boardroom.description"),
+      icon: Users,
+      color: "from-blue-600 to-cyan-600",
+    },
+    {
+      id: "shark_tank",
+      title: t("modes.shark_tank.title"),
+      description: t("modes.shark_tank.description"),
+      icon: Zap,
+      color: "from-orange-600 to-amber-600",
+    },
+    {
+      id: "policy_arena",
+      title: t("modes.policy_arena.title"),
+      description: t("modes.policy_arena.description"),
+      icon: Shield,
+      color: "from-green-600 to-emerald-600",
+    },
+  ];
+
+  const FEATURES = [
+    {
+      icon: Brain,
+      title: t("features.multi_agent.title"),
+      description: t("features.multi_agent.description"),
+    },
+    {
+      icon: Shield,
+      title: t("features.fallacy.title"),
+      description: t("features.fallacy.description"),
+    },
+    {
+      icon: BarChart3,
+      title: t("features.scoring.title"),
+      description: t("features.scoring.description"),
+    },
+    {
+      icon: Sparkles,
+      title: t("features.heatmap.title"),
+      description: t("features.heatmap.description"),
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
@@ -81,13 +84,32 @@ export default function LandingPage() {
             </div>
             <span className="font-bold text-white text-lg">Decision Arena</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Language switcher */}
+            <div className="flex items-center gap-0.5 bg-[#111118] border border-[#1e1e2e] rounded-lg p-0.5">
+              {LOCALES.map((l) => (
+                <button
+                  key={l.code}
+                  onClick={() => setLocale(l.code)}
+                  title={l.label}
+                  className={cn(
+                    "px-2 py-1 rounded-md text-xs font-medium transition-colors",
+                    locale === l.code
+                      ? "bg-violet-600 text-white"
+                      : "text-slate-400 hover:text-white"
+                  )}
+                >
+                  {l.script}
+                </button>
+              ))}
+            </div>
+
             {isSignedIn ? (
               <Link
                 href="/arena"
                 className="text-sm px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors flex items-center gap-2"
               >
-                Enter Arena <ArrowRight className="w-3 h-3" />
+                {t("nav.enterArena")} <ArrowRight className="w-3 h-3" />
               </Link>
             ) : (
               <>
@@ -95,13 +117,13 @@ export default function LandingPage() {
                   href="/sign-in"
                   className="text-sm text-slate-400 hover:text-white transition-colors"
                 >
-                  Sign In
+                  {t("nav.signIn")}
                 </Link>
                 <Link
                   href="/sign-up"
                   className="text-sm px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors"
                 >
-                  Get Started
+                  {t("nav.getStarted")}
                 </Link>
               </>
             )}
@@ -120,18 +142,17 @@ export default function LandingPage() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-violet-500/30 bg-violet-500/10 text-violet-300 text-sm mb-6">
             <Sparkles className="w-3 h-3" />
-            Powered by Groq
+            {t("hero.badge")}
           </div>
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Don&apos;t just decide.
+            {t("hero.headline1")}
             <br />
             <span className="bg-gradient-to-r from-violet-400 to-purple-400 bg-clip-text text-transparent">
-              Decide better.
+              {t("hero.headline2")}
             </span>
           </h1>
           <p className="text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-            Multiple expert AI agents debate your most important decisions —
-            exposing blind spots through structured adversarial deliberation.
+            {t("hero.subtext")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             {isSignedIn ? (
@@ -140,13 +161,13 @@ export default function LandingPage() {
                   href="/arena"
                   className="px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all hover:scale-105 glow-accent flex items-center gap-2 justify-center"
                 >
-                  Enter the Arena <ArrowRight className="w-4 h-4" />
+                  {t("hero.cta_enter")} <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   href="/history"
                   className="px-8 py-4 border border-[#1e1e2e] text-slate-300 hover:text-white hover:border-violet-500/50 rounded-xl transition-all"
                 >
-                  My Debates
+                  {t("hero.cta_debates")}
                 </Link>
               </>
             ) : (
@@ -155,13 +176,13 @@ export default function LandingPage() {
                   href="/sign-up"
                   className="px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all hover:scale-105 glow-accent flex items-center gap-2 justify-center"
                 >
-                  Start a Debate <ArrowRight className="w-4 h-4" />
+                  {t("hero.cta_start")} <ArrowRight className="w-4 h-4" />
                 </Link>
                 <Link
                   href="/sign-in"
                   className="px-8 py-4 border border-[#1e1e2e] text-slate-300 hover:text-white hover:border-violet-500/50 rounded-xl transition-all"
                 >
-                  Sign In
+                  {t("hero.cta_signin")}
                 </Link>
               </>
             )}
@@ -173,10 +194,10 @@ export default function LandingPage() {
       <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-white text-center mb-4">
-            Choose Your Arena
+            {t("modes_section.heading")}
           </h2>
           <p className="text-slate-400 text-center mb-12">
-            Four debate formats designed for different decision contexts
+            {t("modes_section.subheading")}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {MODES.map((mode, i) => (
@@ -204,7 +225,7 @@ export default function LandingPage() {
       <section className="py-20 px-6 border-t border-[#1e1e2e]">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-white text-center mb-12">
-            Built for high-stakes decisions
+            {t("features_section.heading")}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {FEATURES.map((feature, i) => (
@@ -230,23 +251,23 @@ export default function LandingPage() {
       <section className="py-24 px-6 text-center border-t border-[#1e1e2e]">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-4xl font-bold text-white mb-4">
-            Ready to stress-test your decision?
+            {t("cta.heading")}
           </h2>
           <p className="text-slate-400 mb-8">
-            Join the arena. Get a verdict in minutes.
+            {t("cta.subtext")}
           </p>
           <Link
             href={isSignedIn ? "/arena" : "/sign-up"}
             className="inline-flex items-center gap-2 px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all hover:scale-105 glow-accent"
           >
-            {isSignedIn ? "Enter the Arena" : "Start for free"}{" "}
+            {isSignedIn ? t("cta.enter") : t("cta.start_free")}{" "}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </section>
 
       <footer className="border-t border-[#1e1e2e] py-8 px-6 text-center text-slate-500 text-sm">
-        © {new Date().getFullYear()} Decision Arena — Built for hackathon. Powered by Groq.
+        {t("footer", { year: String(new Date().getFullYear()) })}
       </footer>
     </div>
   );

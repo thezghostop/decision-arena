@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { MessageSquare, Send, Loader2 } from "lucide-react";
 import { injectAudienceQuestion, setAuthToken } from "@/lib/api";
 import { wsManager } from "@/lib/websocket";
+import { useI18n } from "@/lib/i18n";
 
 interface AudienceInputProps {
   debateId: string;
@@ -16,6 +17,7 @@ interface AudienceInputProps {
 
 export function AudienceInput({ debateId, isComplete, onSent }: AudienceInputProps) {
   const { getToken } = useAuth();
+  const { t } = useI18n();
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -56,7 +58,7 @@ export function AudienceInput({ debateId, isComplete, onSent }: AudienceInputPro
         className="flex items-center gap-2 text-sm text-slate-400 hover:text-violet-400 transition-colors"
       >
         <MessageSquare className="w-4 h-4" />
-        {isComplete ? "Ask a follow-up question" : "Ask the panel"}
+        {isComplete ? t("audience.submit") + " follow-up" : t("audience.placeholder")}
       </button>
 
       <AnimatePresence>
@@ -72,7 +74,7 @@ export function AudienceInput({ debateId, isComplete, onSent }: AudienceInputPro
               <input
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
-                placeholder={isComplete ? "Ask a follow-up…" : "Ask the panel a question…"}
+                placeholder={t("audience.placeholder")}
                 className="flex-1 bg-[#111118] border border-[#1e1e2e] rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-violet-500/50 transition-colors"
                 maxLength={500}
                 autoFocus

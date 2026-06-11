@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "sonner";
+import { I18nProvider } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
+      <I18nProvider>
       <html lang="en" className="dark">
         <body>
           {children}
@@ -38,6 +40,7 @@ export default function RootLayout({
           />
         </body>
       </html>
+      </I18nProvider>
     </ClerkProvider>
   );
 }

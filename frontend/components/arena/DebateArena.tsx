@@ -6,7 +6,7 @@ import { AnimatePresence } from "framer-motion";
 import { Wifi, WifiOff, Loader2 } from "lucide-react";
 import { useDebateStore } from "@/store/debateStore";
 import { useDebateWebSocket } from "@/hooks/useWebSocket";
-import { getDebate, getMessages, getScores, getVerdict, setAuthToken } from "@/lib/api";
+import { getDebate, getMessages, setAuthToken } from "@/lib/api";
 import { MessageBubble } from "./MessageBubble";
 import { Scoreboard } from "./Scoreboard";
 import { AudienceInput } from "./AudienceInput";
@@ -14,10 +14,12 @@ import { FinalVerdict } from "./FinalVerdict";
 import { ExportReport } from "./ExportReport";
 import { DebateStage } from "./DebateStage";
 import { truncate } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n";
 
 export function DebateArena({ debateId }: { debateId: string }) {
   const { getToken } = useAuth();
   const store = useDebateStore();
+  const { t } = useI18n();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef(false);
@@ -43,16 +45,8 @@ export function DebateArena({ debateId }: { debateId: string }) {
         if (!mounted) return;
         store.setDebate(debate);
         if (debate.status === "completed") {
-          const [msgs, scoresData, verdictData] = await Promise.all([
-            getMessages(debateId),
-            getScores(debateId),
-            getVerdict(debateId),
-          ]);
-          if (mounted) {
-            msgs.forEach((m) => store.addMessage(m));
-            if (scoresData) store.setScores(scoresData);
-            if (verdictData) store.setVerdict(verdictData);
-          }
+          const msgs = await getMessages(debateId);
+          if (mounted) msgs.forEach((m) => store.addMessage(m));
         }
       } catch (err) {
         console.error("Failed to load debate:", err);
@@ -78,7 +72,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-3">
           <Loader2 className="w-8 h-8 animate-spin text-violet-400 mx-auto" />
-          <p className="text-slate-400 text-sm">Loading debate…</p>
+          <p className="text-slate-400 text-sm">{t("debate_arena.loading")}</p>
         </div>
       </div>
     );
@@ -87,10 +81,10 @@ export function DebateArena({ debateId }: { debateId: string }) {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="space-y-3 sticky top-0 z-10 bg-[#0a0a0f] pb-3 pt-1">
+      <div className="space-y-3">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-base md:text-xl font-bold text-white leading-tight">
+            <h1 className="text-xl font-bold text-white leading-tight">
               {store.debate ? truncate(store.debate.question, 80) : "Loading…"}
             </h1>
             {store.debate && (
@@ -102,29 +96,22 @@ export function DebateArena({ debateId }: { debateId: string }) {
           <div className="flex items-center gap-3 shrink-0">
             <div className={`flex items-center gap-1.5 text-xs ${isConnected ? "text-green-400" : "text-slate-500"}`}>
               {isConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-              {isConnected ? "Live" : "Offline"}
+              {isConnected ? t("debate_arena.live") : t("debate_arena.offline")}
             </div>
-            {isComplete && store.debate && (
-              <ExportReport
-                debate={store.debate}
-                messages={store.messages}
-                scores={store.scores}
-                verdict={store.verdict}
-              />
-            )}
+            {isComplete && <ExportReport debateId={debateId} />}
           </div>
         </div>
         <DebateStage current={store.currentStage} />
       </div>
 
       {/* Main debate layout: messages + sidebar */}
-      <div className="flex flex-col md:flex-row gap-6">
+      <div className="flex gap-6">
         {/* Messages */}
         <div className="flex-1 min-w-0">
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="space-y-3 min-h-96 max-h-[60vh] md:max-h-[calc(100vh-280px)] overflow-y-auto pr-2"
+            className="space-y-3 min-h-96 max-h-[calc(100vh-280px)] overflow-y-auto pr-2"
           >
             <AnimatePresence initial={false}>
               {store.messages.map((msg) => (
@@ -136,7 +123,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
               <div className="flex items-center justify-center h-48">
                 <div className="text-center space-y-2">
                   <Loader2 className="w-6 h-6 animate-spin text-violet-400 mx-auto" />
-                  <p className="text-slate-500 text-sm">Panel assembling…</p>
+                  <p className="text-slate-500 text-sm">{t("debate_arena.assembling")}</p>
                 </div>
               </div>
             )}
@@ -151,10 +138,10 @@ export function DebateArena({ debateId }: { debateId: string }) {
         </div>
 
         {/* Sidebar */}
-        <div className="w-full md:w-80 md:shrink-0 space-y-4">
+        <div className="w-72 shrink-0 space-y-4">
           {store.debate && store.debate.panel.length > 0 && (
-            <div className="glass rounded-xl p-4 overflow-hidden">
-              <h3 className="text-sm font-semibold text-white mb-3">Expert Panel</h3>
+            <div className="glass rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-white mb-3">{t("debate_arena.expert_panel")}</h3>
               <div className="space-y-2">
                 {store.debate.panel.map((agent) => (
                   <div key={agent.id} className="flex items-start gap-3">
@@ -167,7 +154,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-white">{agent.name}</p>
                       <p className="text-xs text-slate-400">{agent.role}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed break-words">{agent.bias}</p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{agent.bias}</p>
                     </div>
                   </div>
                 ))}
@@ -190,8 +177,8 @@ export function DebateArena({ debateId }: { debateId: string }) {
                 <div className="absolute inset-0 rounded-full border-2 border-violet-500/10 animate-ping" />
               </div>
               <div className="text-center space-y-1">
-                <p className="text-white font-semibold text-base">Deliberating…</p>
-                <p className="text-slate-400 text-sm">The panel is synthesising the final verdict</p>
+                <p className="text-white font-semibold text-base">{t("debate_arena.deliberating")}</p>
+                <p className="text-slate-400 text-sm">{t("debate_arena.synthesising")}</p>
               </div>
               {/* Pulsing placeholder bars */}
               <div className="w-full max-w-md space-y-3 mt-2">
