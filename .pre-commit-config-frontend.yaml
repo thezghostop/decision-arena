@@ -27,11 +27,11 @@ repos:
     hooks:
       - id: eslint
         name: ESLint
-        language: node
-        entry: npx eslint --fix
+        language: system
+        entry: bash -c "cd frontend && ./node_modules/.bin/eslint --fix"
         files: ^frontend/
         types_or: [javascript, jsx, ts, tsx]
-        pass_filenames: true
+        pass_filenames: false
 
   # ── Type Check (tsc) ──────────────────────────────────────
   - repo: local
