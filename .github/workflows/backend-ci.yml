@@ -1,0 +1,43 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt --break-system-packages
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+        env:
+          GEMINI_API_KEY: test_key
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_SERVICE_KEY: test_key
+          CLERK_SECRET_KEY: test_key
+          ALLOWED_ORIGINS: http://localhost:3000
+          DEBUG: "true"
+
+      - name: Check for syntax errors
+        run: python -m py_compile app/main.py app/config.py app/database.py app/auth.py

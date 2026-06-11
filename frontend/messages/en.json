@@ -1,0 +1,124 @@
+{
+  "nav": {
+    "brand": "Decision Arena",
+    "signIn": "Sign In",
+    "getStarted": "Get Started",
+    "enterArena": "Enter Arena",
+    "newDebate": "New Debate",
+    "history": "History"
+  },
+  "hero": {
+    "badge": "Powered by Groq",
+    "headline1": "Don't just decide.",
+    "headline2": "Decide better.",
+    "subtext": "Multiple expert AI agents debate your most important decisions — exposing blind spots through structured adversarial deliberation.",
+    "cta_enter": "Enter the Arena",
+    "cta_debates": "My Debates",
+    "cta_start": "Start a Debate",
+    "cta_signin": "Sign In"
+  },
+  "modes_section": {
+    "heading": "Choose Your Arena",
+    "subheading": "Four debate formats designed for different decision contexts"
+  },
+  "modes": {
+    "standard": {
+      "title": "Standard Arena",
+      "description": "Expert panel debates every angle of your decision"
+    },
+    "boardroom": {
+      "title": "Boardroom",
+      "description": "You're the CEO. AI executives challenge your strategy"
+    },
+    "shark_tank": {
+      "title": "Shark Tank",
+      "description": "AI investors tear apart your pitch — and rebuild it"
+    },
+    "policy_arena": {
+      "title": "Policy Arena",
+      "description": "Economists and politicians debate the real-world impact"
+    }
+  },
+  "features_section": {
+    "heading": "Built for high-stakes decisions"
+  },
+  "features": {
+    "multi_agent": {
+      "title": "Multi-Agent Debate",
+      "description": "4–6 expert AI agents with distinct perspectives challenge your thinking"
+    },
+    "fallacy": {
+      "title": "Fallacy Detection",
+      "description": "Real-time logical fallacy detection across all arguments"
+    },
+    "scoring": {
+      "title": "Live Scoring",
+      "description": "Dynamic scoring on logic, evidence, and persuasion"
+    },
+    "heatmap": {
+      "title": "Decision Heatmap",
+      "description": "Visual breakdown of risk vs opportunity across dimensions"
+    }
+  },
+  "cta": {
+    "heading": "Ready to stress-test your decision?",
+    "subtext": "Join the arena. Get a verdict in minutes.",
+    "enter": "Enter the Arena",
+    "start_free": "Start for free"
+  },
+  "footer": "© {year} Decision Arena — Built for hackathon. Powered by Groq.",
+  "arena_setup": {
+    "title": "New Debate",
+    "subtitle": "Describe your decision. Expert AI agents will debate every angle.",
+    "question_label": "Your Decision / Question",
+    "question_placeholder": "e.g. Should I leave my stable job to co-found a startup in the AI space?",
+    "chars_needed": "{n} more characters needed",
+    "mode_label": "Arena Mode",
+    "submit": "Start Debate",
+    "classifying": "Classifying question…",
+    "assembling": "Assembling expert panel…",
+    "error_min_chars": "Question must be at least 10 characters"
+  },
+  "arena_modes": {
+    "standard": {
+      "title": "Standard",
+      "description": "Expert panel debates every angle"
+    },
+    "boardroom": {
+      "title": "Boardroom",
+      "description": "AI executives challenge your strategy"
+    },
+    "shark_tank": {
+      "title": "Shark Tank",
+      "description": "AI investors tear apart your pitch"
+    },
+    "policy": {
+      "title": "Policy Arena",
+      "description": "Economists debate the real impact"
+    }
+  },
+  "debate_arena": {
+    "loading": "Loading debate…",
+    "live": "Live",
+    "offline": "Offline",
+    "assembling": "Panel assembling…",
+    "expert_panel": "Expert Panel",
+    "deliberating": "Deliberating…",
+    "synthesising": "The panel is synthesising the final verdict"
+  },
+  "export": {
+    "button": "Export PDF",
+    "success": "Report downloaded",
+    "error": "Failed to export report"
+  },
+  "audience": {
+    "placeholder": "Ask the panel a question…",
+    "submit": "Ask",
+    "debate_ended": "Debate has ended"
+  },
+  "history": {
+    "title": "Debate History",
+    "empty": "No debates yet",
+    "empty_sub": "Start your first debate to see it here"
+  }
+}
