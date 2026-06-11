@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Brain, Users, Zap, Shield, Loader2, ArrowRight } from "lucide-react";
-import { createDebate, setAuthToken } from "@/lib/api";
+import { createDebate, setAuthToken, healthCheck } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import type { DebateMode } from "@/types";
 
@@ -18,6 +18,9 @@ export function ArenaSetup() {
   const [mode, setMode] = useState<DebateMode>("standard");
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+
+  // Ping backend on mount so Render wakes up before the user hits Submit
+  useEffect(() => { healthCheck(); }, []);
 
   const MODES: {
     id: DebateMode;

@@ -12,7 +12,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export const apiClient = axios.create({
   baseURL: API_URL,
-  timeout: 30000,
+  timeout: 90000, // 90s — Render free tier cold starts can take ~60s
   headers: { "Content-Type": "application/json" },
 });
 
@@ -91,20 +91,6 @@ export async function injectAudienceQuestion(
     `/api/v1/debates/${payload.debate_id}/inject`,
     { question: payload.question }
   );
-}
-
-export async function getScores(debateId: string) {
-  const { data } = await apiClient.get(`/api/v1/debates/${debateId}/scores`);
-  return data;
-}
-
-export async function getVerdict(debateId: string) {
-  try {
-    const { data } = await apiClient.get(`/api/v1/reports/${debateId}/verdict`);
-    return data;
-  } catch {
-    return null;
-  }
 }
 
 export async function exportDebateReport(debateId: string): Promise<string> {
