@@ -96,7 +96,7 @@ export default function LandingPage() {
                     "px-2 py-1 rounded-md text-xs font-medium transition-colors",
                     locale === l.code
                       ? "bg-violet-600 text-white"
-                      : "text-slate-400 hover:text-white"
+                      : "text-slate-400 hover:text-white",
                   )}
                 >
                   {l.script}
@@ -239,7 +239,9 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center mx-auto mb-4">
                   <feature.icon className="w-6 h-6 text-violet-400" />
                 </div>
-                <h3 className="font-semibold text-white mb-2">{feature.title}</h3>
+                <h3 className="font-semibold text-white mb-2">
+                  {feature.title}
+                </h3>
                 <p className="text-sm text-slate-400">{feature.description}</p>
               </motion.div>
             ))}
@@ -253,9 +255,7 @@ export default function LandingPage() {
           <h2 className="text-4xl font-bold text-white mb-4">
             {t("cta.heading")}
           </h2>
-          <p className="text-slate-400 mb-8">
-            {t("cta.subtext")}
-          </p>
+          <p className="text-slate-400 mb-8">{t("cta.subtext")}</p>
           <Link
             href={isSignedIn ? "/arena" : "/sign-up"}
             className="inline-flex items-center gap-2 px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-semibold rounded-xl transition-all hover:scale-105 glow-accent"

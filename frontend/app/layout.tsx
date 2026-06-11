@@ -24,22 +24,22 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <I18nProvider>
-      <html lang="en" className="dark">
-        <body>
-          {children}
-          <Toaster
-            theme="dark"
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: "#111118",
-                border: "1px solid #1e1e2e",
-                color: "#e2e8f0",
-              },
-            }}
-          />
-        </body>
-      </html>
+        <html lang="en" className="dark">
+          <body>
+            {children}
+            <Toaster
+              theme="dark"
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: "#111118",
+                  border: "1px solid #1e1e2e",
+                  color: "#e2e8f0",
+                },
+              }}
+            />
+          </body>
+        </html>
       </I18nProvider>
     </ClerkProvider>
   );

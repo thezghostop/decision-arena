@@ -37,7 +37,9 @@ export function DebateHistory() {
       }
     };
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

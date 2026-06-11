@@ -62,7 +62,7 @@ export function Scoreboard({ scores }: { scores: AgentScore[] }) {
                 <span
                   className={cn(
                     "text-sm font-bold ml-2 shrink-0",
-                    getScoreColor(score.overall)
+                    getScoreColor(score.overall),
                   )}
                 >
                   {Math.round(score.overall)}

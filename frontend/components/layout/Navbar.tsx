@@ -36,7 +36,7 @@ export function Navbar() {
                 "flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors",
                 pathname === href
                   ? "bg-violet-600/20 text-violet-300"
-                  : "text-slate-400 hover:text-white hover:bg-white/5"
+                  : "text-slate-400 hover:text-white hover:bg-white/5",
               )}
             >
               <Icon className="w-4 h-4" />
@@ -55,7 +55,7 @@ export function Navbar() {
                   "px-2 py-1 rounded-md text-xs font-medium transition-colors",
                   locale === l.code
                     ? "bg-violet-600 text-white"
-                    : "text-slate-400 hover:text-white"
+                    : "text-slate-400 hover:text-white",
                 )}
               >
                 {l.script}

@@ -25,7 +25,11 @@ export class DebateWebSocketManager {
   }
 
   private get language(): string {
-    try { return localStorage.getItem("da_locale") || "en"; } catch { return "en"; }
+    try {
+      return localStorage.getItem("da_locale") || "en";
+    } catch {
+      return "en";
+    }
   }
 
   private establishConnection(): void {
@@ -64,10 +68,13 @@ export class DebateWebSocketManager {
 
   private scheduleReconnect(): void {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) return;
-    setTimeout(() => {
-      this.reconnectAttempts++;
-      this.establishConnection();
-    }, this.reconnectDelay * Math.pow(2, this.reconnectAttempts));
+    setTimeout(
+      () => {
+        this.reconnectAttempts++;
+        this.establishConnection();
+      },
+      this.reconnectDelay * Math.pow(2, this.reconnectAttempts),
+    );
   }
 
   on(event: WSEventType, handler: EventHandler): () => void {
@@ -80,7 +87,7 @@ export class DebateWebSocketManager {
     const existing = this.handlers.get(event) ?? [];
     this.handlers.set(
       event,
-      existing.filter((h) => h !== handler)
+      existing.filter((h) => h !== handler),
     );
   }
 

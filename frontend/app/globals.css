@@ -17,7 +17,8 @@ html,
 body {
   background-color: var(--arena-bg);
   color: #e2e8f0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Scrollbar */
@@ -38,8 +39,13 @@ body {
 
 /* Streaming cursor */
 @keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
 .streaming-cursor::after {
   content: "▍";

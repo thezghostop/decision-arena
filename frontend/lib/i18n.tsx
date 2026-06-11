@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import en from "@/messages/en.json";
 import hi from "@/messages/hi.json";
 import kn from "@/messages/kn.json";
@@ -63,7 +69,8 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     (key: string, vars?: Record<string, string | number>): string => {
       let str = deepGet(messages[locale] as Record<string, unknown>, key);
       // Fall back to English if missing
-      if (str === key) str = deepGet(messages.en as Record<string, unknown>, key);
+      if (str === key)
+        str = deepGet(messages.en as Record<string, unknown>, key);
       if (vars) {
         Object.entries(vars).forEach(([k, v]) => {
           str = str.replace(`{${k}}`, String(v));
@@ -71,7 +78,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       }
       return str;
     },
-    [locale]
+    [locale],
   );
 
   return (
