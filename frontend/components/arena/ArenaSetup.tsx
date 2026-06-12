@@ -15,7 +15,7 @@ export function ArenaSetup() {
   const router = useRouter();
   const { getToken } = useAuth();
   const { t } = useI18n();
-  const { toLLMConfig, settings } = useAISettings();
+  const { toLLMConfig } = useAISettings();
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<DebateMode>("standard");
   const [loading, setLoading] = useState(false);

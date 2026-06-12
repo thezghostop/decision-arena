@@ -58,7 +58,14 @@ export function useAISettings() {
     setOllamaLoading(true);
     setOllamaError(null);
     try {
-      const res = await fetch(`${url}/api/tags`, { signal: AbortSignal.timeout(4000) });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      let res: Response;
+      try {
+        res = await fetch(`${url}/api/tags`, { signal: controller.signal });
+      } finally {
+        clearTimeout(timer);
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const models: OllamaModel[] = (data.models ?? []).map((m: any) => ({
@@ -76,11 +83,12 @@ export function useAISettings() {
         }
         return prev;
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string };
       setOllamaError(
-        err?.name === "TimeoutError"
+        e?.name === "AbortError"
           ? "Ollama not reachable — is it running?"
-          : String(err?.message ?? err)
+          : String(e?.message ?? err)
       );
     } finally {
       setOllamaLoading(false);
