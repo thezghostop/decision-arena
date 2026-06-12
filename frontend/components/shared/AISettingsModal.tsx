@@ -71,7 +71,7 @@ export function AISettingsModal({ open, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === overlayRef.current && onClose()}
     >
-      <div className="w-full max-w-lg mx-4 bg-[#0f0f1a] border border-[#2a2a3e] rounded-2xl shadow-2xl overflow-hidden">
+      <div className="w-full max-w-lg mx-4 bg-[#0f0f1a] border border-[#2a2a3e] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e2e]">
           <div className="flex items-center gap-3">
@@ -83,7 +83,7 @@ export function AISettingsModal({ open, onClose }: Props) {
           </button>
         </div>
 
-        <div className="px-6 py-5 space-y-5 max-h-[75vh] overflow-y-auto">
+        <div className="px-6 py-5 space-y-5 overflow-y-auto flex-1">
           {/* Provider picker */}
           <div className="space-y-2">
             <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Choose Provider</p>
