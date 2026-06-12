@@ -78,7 +78,11 @@ export function AnimatedBackground() {
 
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = p.color + Math.round(p.alpha * 255).toString(16).padStart(2, "0");
+        ctx.fillStyle =
+          p.color +
+          Math.round(p.alpha * 255)
+            .toString(16)
+            .padStart(2, "0");
         ctx.fill();
       });
 

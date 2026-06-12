@@ -1,6 +1,6 @@
-from pydantic_settings import BaseSettings
 from functools import lru_cache
-from typing import Optional
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -24,7 +24,7 @@ class Settings(BaseSettings):
 
     # AI
     gemini_api_key: str = ""
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
     groq_api_key: str = ""
     groq_model: str = "llama-3.1-8b-instant"
     ollama_base_url: str = "http://localhost:11434"
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     min_panel_size: int = 2
 
     # Redis (optional)
-    redis_url: Optional[str] = None
+    redis_url: str | None = None
 
     class Config:
         env_file = ".env"

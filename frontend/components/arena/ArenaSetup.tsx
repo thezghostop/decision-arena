@@ -22,7 +22,9 @@ export function ArenaSetup() {
   const [loadingStep, setLoadingStep] = useState("");
 
   // Ping backend on mount so Render wakes up before the user hits Submit
-  useEffect(() => { healthCheck(); }, []);
+  useEffect(() => {
+    healthCheck();
+  }, []);
 
   const MODES: {
     id: DebateMode;
@@ -76,13 +78,20 @@ export function ArenaSetup() {
       setAuthToken(token);
 
       setLoadingStep(t("arena_setup.assembling"));
-      const debate = await createDebate({ question: question.trim(), mode, llm_config: toLLMConfig() });
+      const debate = await createDebate({
+        question: question.trim(),
+        mode,
+        llm_config: toLLMConfig(),
+      });
 
       router.push(`/arena/${debate.id}`);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Failed to start debate";
-      toast.error(msg.includes("422") ? "Backend validation error — check backend logs" : msg);
+      const msg = err instanceof Error ? err.message : "Failed to start debate";
+      toast.error(
+        msg.includes("422")
+          ? "Backend validation error — check backend logs"
+          : msg,
+      );
       console.error(err);
     } finally {
       setLoading(false);
@@ -97,7 +106,9 @@ export function ArenaSetup() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">{t("arena_setup.title")}</h1>
+        <h1 className="text-3xl font-bold text-white mb-2">
+          {t("arena_setup.title")}
+        </h1>
         <p className="text-slate-400">{t("arena_setup.subtitle")}</p>
       </div>
 
@@ -105,7 +116,8 @@ export function ArenaSetup() {
         {/* Question */}
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">
-            {t("arena_setup.question_label")} <span className="text-red-400">*</span>
+            {t("arena_setup.question_label")}{" "}
+            <span className="text-red-400">*</span>
           </label>
           <textarea
             value={question}
@@ -116,12 +128,16 @@ export function ArenaSetup() {
             maxLength={1000}
           />
           <div className="flex justify-between mt-1">
-            <span className={`text-xs ${question.length < 10 && question.length > 0 ? "text-red-400" : "text-slate-500"}`}>
+            <span
+              className={`text-xs ${question.length < 10 && question.length > 0 ? "text-red-400" : "text-slate-500"}`}
+            >
               {question.length < 10 && question.length > 0
                 ? t("arena_setup.chars_needed", { n: 10 - question.length })
                 : ""}
             </span>
-            <span className="text-xs text-slate-500">{question.length}/1000</span>
+            <span className="text-xs text-slate-500">
+              {question.length}/1000
+            </span>
           </div>
         </div>
 

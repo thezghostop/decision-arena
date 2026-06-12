@@ -23,9 +23,13 @@ export function GlassCard({
         variant === "strong" && "glass-strong",
         variant === "subtle" && "bg-white/[0.02] border border-white/[0.05]",
         glow && "glow-purple",
-        className
+        className,
       )}
-      style={glowColor ? { boxShadow: `0 0 20px ${glowColor}40, 0 0 40px ${glowColor}15` } : undefined}
+      style={
+        glowColor
+          ? { boxShadow: `0 0 20px ${glowColor}40, 0 0 40px ${glowColor}15` }
+          : undefined
+      }
       {...props}
     >
       {children}

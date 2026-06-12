@@ -76,15 +76,15 @@ export interface DebateMessage {
   id: string;
   debate_id: string;
   stage: DebateStageType;
-  role?: MessageRole;           // used by MessageBubble for rendering variant
+  role?: MessageRole; // used by MessageBubble for rendering variant
   agent_id?: string;
   agent_name?: string;
-  agent_role?: string;          // agent's job title, e.g. "CFO"
-  agent_title?: string;         // alias shown in MessageBubble subtitle
+  agent_role?: string; // agent's job title, e.g. "CFO"
+  agent_title?: string; // alias shown in MessageBubble subtitle
   agent_icon?: string;
   agent_color?: string;
   content: string;
-  message_type?: string;        // "argument" | "question" | "moderation"
+  message_type?: string; // "argument" | "question" | "moderation"
   timestamp?: string;
   created_at?: string;
   fallacies?: Fallacy[];

@@ -11,11 +11,11 @@ import { Loader2, Clock, CheckCircle, ArrowRight, Brain } from "lucide-react";
 
 const STATUS_STYLES: Record<string, string> = {
   completed: "text-green-400 bg-green-500/10 border-green-500/30",
-  running:   "text-violet-400 bg-violet-500/10 border-violet-500/30",
-  active:    "text-violet-400 bg-violet-500/10 border-violet-500/30",
-  pending:   "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
-  error:     "text-red-400 bg-red-500/10 border-red-500/30",
-  failed:    "text-red-400 bg-red-500/10 border-red-500/30",
+  running: "text-violet-400 bg-violet-500/10 border-violet-500/30",
+  active: "text-violet-400 bg-violet-500/10 border-violet-500/30",
+  pending: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
+  error: "text-red-400 bg-red-500/10 border-red-500/30",
+  failed: "text-red-400 bg-red-500/10 border-red-500/30",
 };
 
 export function DebateHistory() {
@@ -39,7 +39,9 @@ export function DebateHistory() {
       }
     };
     load();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

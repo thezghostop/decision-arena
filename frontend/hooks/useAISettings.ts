@@ -53,54 +53,62 @@ export function useAISettings() {
   }, []);
 
   /** Fetch models directly from the local Ollama daemon. */
-  const fetchOllamaModels = useCallback(async (baseUrl?: string) => {
-    const url = (baseUrl ?? settings.ollamaBaseUrl).replace(/\/$/, "");
-    setOllamaLoading(true);
-    setOllamaError(null);
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch(`${url}/api/tags`, {
-        signal: controller.signal,
-        headers: { "ngrok-skip-browser-warning": "true" },
-      }).finally(() => clearTimeout(timer));
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const models: OllamaModel[] = (data.models ?? []).map((m: any) => ({
-        name: m.name,
-        size: m.size ?? 0,
-        parameter_size: m.details?.parameter_size ?? "",
-      }));
-      setOllamaModels(models);
-      // Auto-select first model if none chosen
-      setSettings((prev) => {
-        if (!prev.ollamaModel && models.length > 0) {
-          const next = { ...prev, ollamaModel: models[0].name };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-          return next;
-        }
-        return prev;
-      });
-    } catch (err: unknown) {
-      const e = err as { name?: string; message?: string };
-      setOllamaError(
-        e?.name === "AbortError"
-          ? "Ollama not reachable — is it running?"
-          : String(e?.message ?? err)
-      );
-    } finally {
-      setOllamaLoading(false);
-    }
-  }, [settings.ollamaBaseUrl]);
+  const fetchOllamaModels = useCallback(
+    async (baseUrl?: string) => {
+      const url = (baseUrl ?? settings.ollamaBaseUrl).replace(/\/$/, "");
+      setOllamaLoading(true);
+      setOllamaError(null);
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch(`${url}/api/tags`, {
+          signal: controller.signal,
+          headers: { "ngrok-skip-browser-warning": "true" },
+        }).finally(() => clearTimeout(timer));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        const models: OllamaModel[] = (data.models ?? []).map((m: any) => ({
+          name: m.name,
+          size: m.size ?? 0,
+          parameter_size: m.details?.parameter_size ?? "",
+        }));
+        setOllamaModels(models);
+        // Auto-select first model if none chosen
+        setSettings((prev) => {
+          if (!prev.ollamaModel && models.length > 0) {
+            const next = { ...prev, ollamaModel: models[0].name };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+            return next;
+          }
+          return prev;
+        });
+      } catch (err: unknown) {
+        const e = err as { name?: string; message?: string };
+        setOllamaError(
+          e?.name === "AbortError"
+            ? "Ollama not reachable — is it running?"
+            : String(e?.message ?? err),
+        );
+      } finally {
+        setOllamaLoading(false);
+      }
+    },
+    [settings.ollamaBaseUrl],
+  );
 
   /** Build the payload to attach to debate creation requests. */
   const toLLMConfig = useCallback(() => {
     if (settings.provider === "server") return undefined;
     return {
       provider: settings.provider,
-      api_key: settings.provider !== "ollama" ? settings.apiKey || undefined : undefined,
-      ollama_base_url: settings.provider === "ollama" ? settings.ollamaBaseUrl : undefined,
-      ollama_model: settings.provider === "ollama" ? settings.ollamaModel : undefined,
+      api_key:
+        settings.provider !== "ollama"
+          ? settings.apiKey || undefined
+          : undefined,
+      ollama_base_url:
+        settings.provider === "ollama" ? settings.ollamaBaseUrl : undefined,
+      ollama_model:
+        settings.provider === "ollama" ? settings.ollamaModel : undefined,
       groq_model: settings.provider === "groq" ? settings.groqModel : undefined,
     };
   }, [settings]);

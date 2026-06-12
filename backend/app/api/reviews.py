@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional
 
 from app.auth import get_current_user
 from app.database import DatabaseService
@@ -15,15 +15,15 @@ router = APIRouter(prefix="/api/v1/reviews", tags=["reviews"])
 
 
 class CreateReviewRequest(BaseModel):
-    debate_id: Optional[str] = None
+    debate_id: str | None = None
     rating: int = Field(..., ge=1, le=5)
-    review_text: Optional[str] = None
+    review_text: str | None = None
 
 
 class ReviewResponse(BaseModel):
     id: str
     rating: int
-    review_text: Optional[str]
+    review_text: str | None
     created_at: str
 
 

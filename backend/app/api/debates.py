@@ -2,24 +2,26 @@
 
 from __future__ import annotations
 
-import uuid
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+import uuid
+from datetime import UTC
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+
+from app.agents.panel_builder import PanelBuilderAgent
 from app.auth import get_current_user
 from app.database import DatabaseService
-from app.agents.panel_builder import PanelBuilderAgent
 from app.models.debate import (
     ClassifyRequest,
     ClassifyResponse,
     CreateDebateRequest,
     CreateDebateResponse,
     DebateResponse,
-    StartDebateResponse,
+    DebateStage,
+    DebateStatus,
     InjectQuestionRequest,
     InjectQuestionResponse,
-    DebateStatus,
-    DebateStage,
+    StartDebateResponse,
 )
 from app.models.message import DebateMessageResponse
 from app.models.verdict import AgentScoreResponse
@@ -42,6 +44,7 @@ async def classify_question(payload: ClassifyRequest) -> ClassifyResponse:
     mode = payload.mode or "standard"
 
     from app.models.debate import DebateMode
+
     mode_enum = DebateMode(mode) if isinstance(mode, str) else mode
 
     category, confidence = await panel_builder.classify_question(payload.question)
@@ -172,6 +175,7 @@ async def get_scores(
 
 # ── Private Helpers ───────────────────────────────────────────────────────────
 
+
 async def _get_and_authorize_debate(db: DatabaseService, debate_id: str, user: dict) -> dict:
     debate = await db.get_debate(debate_id)
     if not debate:
@@ -184,8 +188,9 @@ async def _get_and_authorize_debate(db: DatabaseService, debate_id: str, user: d
 
 
 async def _count_todays_debates(db: DatabaseService, user_id: str) -> int:
-    from datetime import datetime, timezone, timedelta
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    from datetime import datetime
+
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     result = (
         db.db.table("debates")
         .select("id", count="exact")
@@ -197,8 +202,10 @@ async def _count_todays_debates(db: DatabaseService, user_id: str) -> int:
 
 
 def _map_debate(d: dict) -> DebateResponse:
-    from app.models.debate import AgentConfig
     from datetime import datetime
+
+    from app.models.debate import AgentConfig
+
     return DebateResponse(
         id=d["id"],
         user_id=d["user_id"],
@@ -209,13 +216,16 @@ def _map_debate(d: dict) -> DebateResponse:
         panel=[AgentConfig(**p) if isinstance(p, dict) else p for p in d.get("panel", [])],
         current_stage=d.get("current_stage", "opening"),
         audience_questions=d.get("audience_questions", []),
-        created_at=d["created_at"] if isinstance(d["created_at"], datetime) else datetime.fromisoformat(d["created_at"]),
+        created_at=d["created_at"]
+        if isinstance(d["created_at"], datetime)
+        else datetime.fromisoformat(d["created_at"]),
         completed_at=d.get("completed_at"),
     )
 
 
 def _map_message(m: dict) -> DebateMessageResponse:
     from datetime import datetime
+
     return DebateMessageResponse(
         id=m["id"],
         debate_id=m["debate_id"],
@@ -228,7 +238,9 @@ def _map_message(m: dict) -> DebateMessageResponse:
         fallacies=m.get("fallacies", []),
         fact_tags=m.get("fact_tags", []),
         sequence_num=m.get("sequence_num", 0),
-        created_at=m["created_at"] if isinstance(m["created_at"], datetime) else datetime.fromisoformat(m["created_at"]),
+        created_at=m["created_at"]
+        if isinstance(m["created_at"], datetime)
+        else datetime.fromisoformat(m["created_at"]),
     )
 
 

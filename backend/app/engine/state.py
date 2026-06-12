@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TypedDict, Optional, Annotated
+from typing import Annotated, TypedDict
+
 from app.models.debate import AgentConfig, DebateStage
 
 
@@ -28,8 +29,8 @@ class DebateState(TypedDict):
     # Control
     stage_message_count: dict[str, int]
     should_end: bool
-    error: Optional[str]
+    error: str | None
 
     # Output
-    verdict_raw: Optional[str]
+    verdict_raw: str | None
     scores: list[dict]

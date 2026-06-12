@@ -39,7 +39,8 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
       setTimeout(onClose, 1500);
     } catch (err: unknown) {
       const msg =
-        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        (err as { response?: { data?: { detail?: string } } })?.response?.data
+          ?.detail ||
         (err instanceof Error ? err.message : "Submission failed");
       setError(msg);
     } finally {
@@ -56,10 +57,17 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-white font-semibold text-lg">Rate your experience</h2>
-              <p className="text-slate-400 text-sm mt-0.5">Help us improve Decision Arena</p>
+              <h2 className="text-white font-semibold text-lg">
+                Rate your experience
+              </h2>
+              <p className="text-slate-400 text-sm mt-0.5">
+                Help us improve Decision Arena
+              </p>
             </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-white transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -67,8 +75,12 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
           {submitted ? (
             <div className="text-center py-8">
               <div className="text-4xl mb-3">🎉</div>
-              <p className="text-white font-semibold">Thanks for your review!</p>
-              <p className="text-slate-400 text-sm mt-1">Your feedback means a lot.</p>
+              <p className="text-white font-semibold">
+                Thanks for your review!
+              </p>
+              <p className="text-slate-400 text-sm mt-1">
+                Your feedback means a lot.
+              </p>
             </div>
           ) : (
             <>
@@ -87,7 +99,7 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
                         "w-9 h-9 transition-colors",
                         star <= (hovered || rating)
                           ? "fill-yellow-400 text-yellow-400"
-                          : "text-slate-600"
+                          : "text-slate-600",
                       )}
                     />
                   </button>
@@ -106,7 +118,9 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
                 maxLength={500}
                 className="w-full bg-[#111118] border border-[#2a2a3e] rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-violet-500/50 resize-none transition-colors mb-1"
               />
-              <div className="text-right text-xs text-slate-600 mb-5">{text.length}/500</div>
+              <div className="text-right text-xs text-slate-600 mb-5">
+                {text.length}/500
+              </div>
 
               {error && (
                 <p className="text-red-400 text-xs text-center mb-3 bg-red-400/10 rounded-lg px-3 py-2">

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+
 from app.agents.base import BaseAgent
 from app.models.verdict import AgentScoreResponse
 
@@ -34,9 +35,7 @@ class ScorerAgent(BaseAgent):
         agent_configs: list[dict],
     ) -> list[AgentScoreResponse]:
         """Score all agents based on their debate contributions so far."""
-        contributions_text = "\n\n".join(
-            f"[{aid}]: {text[:600]}" for aid, text in agent_contributions.items()
-        )
+        contributions_text = "\n\n".join(f"[{aid}]: {text[:600]}" for aid, text in agent_contributions.items())
 
         agent_list = ", ".join(a["id"] for a in agent_configs)
 
@@ -74,7 +73,14 @@ class ScorerAgent(BaseAgent):
                     continue
                 scores = {
                     k: max(0.0, min(100.0, float(s.get(k, 50))))
-                    for k in ["logic", "evidence", "practicality", "risk_awareness", "longterm_thinking", "persuasiveness"]
+                    for k in [
+                        "logic",
+                        "evidence",
+                        "practicality",
+                        "risk_awareness",
+                        "longterm_thinking",
+                        "persuasiveness",
+                    ]
                 }
                 overall = sum(scores.values()) / len(scores)
                 result.append(

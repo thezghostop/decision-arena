@@ -32,13 +32,12 @@ export function LoadingOrb({ size = "md", label }: LoadingOrbProps) {
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
           style={{
-            boxShadow: "0 0 20px rgba(124,58,237,0.6), 0 0 40px rgba(124,58,237,0.3)",
+            boxShadow:
+              "0 0 20px rgba(124,58,237,0.6), 0 0 40px rgba(124,58,237,0.3)",
           }}
         />
       </div>
-      {label && (
-        <p className="text-sm text-slate-400 animate-pulse">{label}</p>
-      )}
+      {label && <p className="text-sm text-slate-400 animate-pulse">{label}</p>}
     </div>
   );
 }

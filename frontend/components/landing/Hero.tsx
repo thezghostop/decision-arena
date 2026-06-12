@@ -15,7 +15,13 @@ const EXAMPLE_QUESTIONS = [
   "Should our company go remote-first permanently?",
 ];
 
-const MODES: { key: DebateMode; label: string; icon: string; desc: string; color: string }[] = [
+const MODES: {
+  key: DebateMode;
+  label: string;
+  icon: string;
+  desc: string;
+  color: string;
+}[] = [
   {
     key: "standard",
     label: "Standard Debate",
@@ -58,7 +64,9 @@ export function Hero() {
     if (!question.trim() || isLoading) return;
     setIsLoading(true);
     try {
-      router.push(`/arena?q=${encodeURIComponent(question.trim())}&mode=${selectedMode}`);
+      router.push(
+        `/arena?q=${encodeURIComponent(question.trim())}&mode=${selectedMode}`,
+      );
     } catch (err) {
       console.error("Navigation failed:", err);
       router.push("/arena");
@@ -96,8 +104,8 @@ export function Hero() {
 
         <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
           Convene an AI council of expert agents who debate, challenge, and
-          stress-test your most important decisions — uncovering blind spots
-          you never knew existed.
+          stress-test your most important decisions — uncovering blind spots you
+          never knew existed.
         </p>
       </motion.div>
 
@@ -170,8 +178,11 @@ export function Hero() {
                 disabled={!question.trim() || isLoading}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{
-                  background: "linear-gradient(135deg, #7C3AED 0%, #2563EB 100%)",
-                  boxShadow: question.trim() ? "0 0 20px rgba(124,58,237,0.4)" : "none",
+                  background:
+                    "linear-gradient(135deg, #7C3AED 0%, #2563EB 100%)",
+                  boxShadow: question.trim()
+                    ? "0 0 20px rgba(124,58,237,0.4)"
+                    : "none",
                 }}
               >
                 {isLoading ? (
@@ -208,7 +219,9 @@ export function Hero() {
           { label: "Decision Categories", value: "6" },
         ].map((stat) => (
           <div key={stat.label} className="hidden md:block">
-            <p className="text-2xl font-bold text-gradient-gold">{stat.value}</p>
+            <p className="text-2xl font-bold text-gradient-gold">
+              {stat.value}
+            </p>
             <p className="text-xs text-slate-500 mt-1">{stat.label}</p>
           </div>
         ))}

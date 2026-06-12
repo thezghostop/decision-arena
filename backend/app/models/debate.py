@@ -1,8 +1,7 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
 from datetime import datetime
 from enum import Enum
-import uuid
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class DebateCategory(str, Enum):
@@ -47,12 +46,12 @@ class AgentConfig(BaseModel):
     bias: str
     communication_style: str
     expertise_domains: list[str]
-    avatar_seed: Optional[str] = None
+    avatar_seed: str | None = None
 
 
 class ClassifyRequest(BaseModel):
     question: str = Field(..., min_length=10, max_length=1000)
-    mode: Optional[DebateMode] = None
+    mode: DebateMode | None = None
 
 
 class ClassifyResponse(BaseModel):
@@ -64,11 +63,12 @@ class ClassifyResponse(BaseModel):
 
 class LLMProviderConfig(BaseModel):
     """Per-debate LLM config supplied by the client (BYOK / local Ollama)."""
-    provider: str = "server"            # server | ollama | groq | openai | gemini
-    api_key: Optional[str] = None       # BYOK cloud key
-    ollama_base_url: Optional[str] = None
-    ollama_model: Optional[str] = None
-    groq_model: Optional[str] = None
+
+    provider: str = "server"  # server | ollama | groq | openai | gemini
+    api_key: str | None = None  # BYOK cloud key
+    ollama_base_url: str | None = None
+    ollama_model: str | None = None
+    groq_model: str | None = None
 
 
 class CreateDebateRequest(BaseModel):
@@ -76,7 +76,7 @@ class CreateDebateRequest(BaseModel):
     category: DebateCategory
     mode: DebateMode = DebateMode.standard
     panel: list[AgentConfig] = Field(..., min_length=2, max_length=6)
-    llm_config: Optional[LLMProviderConfig] = None
+    llm_config: LLMProviderConfig | None = None
 
     @field_validator("panel")
     @classmethod
@@ -98,7 +98,7 @@ class DebateResponse(BaseModel):
     current_stage: DebateStage
     audience_questions: list[str]
     created_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
 
 
 class CreateDebateResponse(BaseModel):

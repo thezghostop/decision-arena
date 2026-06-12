@@ -64,7 +64,9 @@ export function useDebateWebSocket(debateId: string | null) {
         case "debate_complete": {
           const current = useDebateStore.getState().debate;
           if (current) {
-            useDebateStore.getState().setDebate({ ...current, status: "completed" });
+            useDebateStore
+              .getState()
+              .setDebate({ ...current, status: "completed" });
           }
           break;
         }
@@ -75,7 +77,7 @@ export function useDebateWebSocket(debateId: string | null) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debateId]
+    [debateId],
   );
 
   useEffect(() => {
@@ -110,8 +112,9 @@ export function useDebateWebSocket(debateId: string | null) {
           "error",
         ] as const;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        cleanups = events.map((event) => wsManager.on(event as any, handleMessage as any));
+        cleanups = events.map((event) =>
+          wsManager.on(event as any, handleMessage as any),
+        );
       })
       .catch(console.error);
 

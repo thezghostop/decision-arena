@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
+from dataclasses import dataclass
+
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -19,20 +20,23 @@ settings = get_settings()
 
 # ── User-supplied LLM config (BYOK / local Ollama) ───────────────────────────
 
+
 @dataclass
 class LLMUserConfig:
     """
     Per-request config supplied by the frontend.
     Fields left as None fall back to server env values.
     """
-    provider: str = "server"          # "server" | "ollama" | "groq" | "openai" | "gemini"
-    api_key: Optional[str] = None     # BYOK key (groq / openai / gemini)
-    ollama_base_url: Optional[str] = None   # e.g. "http://localhost:11434"
-    ollama_model: Optional[str] = None      # e.g. "qwen2.5:14b"
-    groq_model: Optional[str] = None
+
+    provider: str = "server"  # "server" | "ollama" | "groq" | "openai" | "gemini"
+    api_key: str | None = None  # BYOK key (groq / openai / gemini)
+    ollama_base_url: str | None = None  # e.g. "http://localhost:11434"
+    ollama_model: str | None = None  # e.g. "qwen2.5:14b"
+    groq_model: str | None = None
 
 
 # ── LLM Service ───────────────────────────────────────────────────────────────
+
 
 class LLMService:
     """
@@ -40,7 +44,7 @@ class LLMService:
     Pass a LLMUserConfig to override server-level keys/provider.
     """
 
-    def __init__(self, user_config: Optional[LLMUserConfig] = None) -> None:
+    def __init__(self, user_config: LLMUserConfig | None = None) -> None:
         self._cfg = user_config
         self._groq_client = None
         self._ollama_client = None
@@ -61,6 +65,7 @@ class LLMService:
             try:
                 import httpx
                 from openai import AsyncOpenAI
+
                 self._ollama_client = AsyncOpenAI(
                     base_url=f"{base_url}/v1",
                     api_key="ollama",
@@ -80,6 +85,7 @@ class LLMService:
         if cfg and cfg.provider == "groq" and cfg.api_key:
             try:
                 from openai import AsyncOpenAI
+
                 self._groq_client = AsyncOpenAI(
                     base_url="https://api.groq.com/openai/v1",
                     api_key=cfg.api_key,
@@ -94,6 +100,7 @@ class LLMService:
         if cfg and cfg.provider == "openai" and cfg.api_key:
             try:
                 from openai import AsyncOpenAI
+
                 self._openai_client = AsyncOpenAI(api_key=cfg.api_key)
                 self._primary = "openai"
                 logger.info("BYOK OpenAI initialized.")
@@ -104,6 +111,7 @@ class LLMService:
         if cfg and cfg.provider == "gemini" and cfg.api_key:
             try:
                 import google.generativeai as genai
+
                 genai.configure(api_key=cfg.api_key)
                 self._gemini_client = genai.GenerativeModel(
                     model_name="gemini-2.5-flash",
@@ -123,6 +131,7 @@ class LLMService:
         if settings.groq_api_key:
             try:
                 from openai import AsyncOpenAI
+
                 self._groq_client = AsyncOpenAI(
                     base_url="https://api.groq.com/openai/v1",
                     api_key=settings.groq_api_key,
@@ -133,6 +142,7 @@ class LLMService:
 
         try:
             from openai import AsyncOpenAI
+
             self._ollama_client = AsyncOpenAI(
                 base_url=f"{settings.ollama_base_url}/v1",
                 api_key="ollama",
@@ -144,6 +154,7 @@ class LLMService:
         if settings.gemini_api_key:
             try:
                 import google.generativeai as genai
+
                 genai.configure(api_key=settings.gemini_api_key)
                 self._gemini_client = genai.GenerativeModel(
                     model_name="gemini-2.5-flash",
@@ -160,6 +171,7 @@ class LLMService:
         if settings.openai_api_key and not settings.openai_api_key.startswith("sk-replace"):
             try:
                 from openai import AsyncOpenAI
+
                 self._openai_client = AsyncOpenAI(api_key=settings.openai_api_key)
                 logger.info("Server OpenAI initialized.")
             except Exception as exc:
@@ -189,8 +201,8 @@ class LLMService:
         self,
         system_prompt: str,
         user_prompt: str,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         primary = self._primary_client()
         if primary:
@@ -202,7 +214,9 @@ class LLMService:
                     logger.error("Gemini generate failed: %s", exc)
             else:
                 try:
-                    return await self._compat_generate(client, model, system_prompt, user_prompt, temperature, max_tokens)
+                    return await self._compat_generate(
+                        client, model, system_prompt, user_prompt, temperature, max_tokens
+                    )
                 except Exception as exc:
                     logger.error("%s generate failed, trying fallback: %s", name, exc)
 
@@ -213,7 +227,9 @@ class LLMService:
                 logger.error("Gemini fallback failed: %s", exc)
 
         if self._openai_client:
-            return await self._compat_generate(self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature, max_tokens)
+            return await self._compat_generate(
+                self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature, max_tokens
+            )
 
         raise RuntimeError("No LLM available. Check your AI provider settings.")
 
@@ -221,7 +237,7 @@ class LLMService:
         self,
         system_prompt: str,
         user_prompt: str,
-        temperature: Optional[float] = None,
+        temperature: float | None = None,
     ) -> AsyncIterator[str]:
         primary = self._primary_client()
         if primary:
@@ -250,7 +266,9 @@ class LLMService:
                 logger.error("Gemini fallback stream failed: %s", exc)
 
         if self._openai_client:
-            async for token in self._compat_stream(self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature):
+            async for token in self._compat_stream(
+                self._openai_client, "gpt-4o", system_prompt, user_prompt, temperature
+            ):
                 yield token
             return
 
@@ -290,6 +308,7 @@ class LLMService:
 
     async def _gemini_generate(self, system_prompt, user_prompt, temperature, max_tokens) -> str:
         import google.generativeai as genai
+
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             generation_config={
@@ -304,6 +323,7 @@ class LLMService:
 
     async def _gemini_stream(self, system_prompt, user_prompt, temperature) -> AsyncIterator[str]:
         import google.generativeai as genai
+
         model = genai.GenerativeModel(
             model_name="gemini-2.5-flash",
             generation_config={
@@ -322,7 +342,7 @@ class LLMService:
 # ── Factories ─────────────────────────────────────────────────────────────────
 
 # Default singleton (server config only)
-_default_service: Optional[LLMService] = None
+_default_service: LLMService | None = None
 
 
 def get_llm_service() -> LLMService:
@@ -333,7 +353,7 @@ def get_llm_service() -> LLMService:
     return _default_service
 
 
-def create_llm_service(user_config: Optional[LLMUserConfig]) -> LLMService:
+def create_llm_service(user_config: LLMUserConfig | None) -> LLMService:
     """
     Create a fresh LLMService for a specific request.
     Falls back to the global singleton when user_config is None or provider='server'.
