@@ -85,7 +85,7 @@ export function DebateHistory() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-white group-hover:text-violet-300 transition-colors line-clamp-2">
-                        {debate.topic}
+                        {debate.question}
                       </p>
                       <div className="flex items-center gap-3 mt-2">
                         <span className="text-xs text-slate-500 capitalize flex items-center gap-1">
