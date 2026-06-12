@@ -256,6 +256,3 @@ export function AISettingsModal({ open, onClose }: Props) {
     </div>
   );
 }
-    </div>
-  );
-}
