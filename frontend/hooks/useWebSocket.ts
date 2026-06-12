@@ -54,16 +54,17 @@ export function useDebateWebSocket(debateId: string | null) {
           break;
         }
         case "score_update": {
-          store.setScores(msg.scores ?? []);
+          useDebateStore.getState().setScores(msg.scores ?? []);
           break;
         }
         case "verdict_ready": {
-          store.setVerdict(msg.verdict);
+          useDebateStore.getState().setVerdict(msg.verdict);
           break;
         }
         case "debate_complete": {
-          if (store.debate) {
-            store.setDebate({ ...store.debate, status: "completed" });
+          const current = useDebateStore.getState().debate;
+          if (current) {
+            useDebateStore.getState().setDebate({ ...current, status: "completed" });
           }
           break;
         }
