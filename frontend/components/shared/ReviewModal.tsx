@@ -19,12 +19,14 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!open) return null;
 
   const handleSubmit = async () => {
     if (rating === 0) return;
     setSubmitting(true);
+    setError(null);
     try {
       const token = await getToken();
       if (token) setAuthToken(token);
@@ -35,8 +37,11 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
       });
       setSubmitted(true);
       setTimeout(onClose, 1500);
-    } catch (err) {
-      console.error("Review submit failed:", err);
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ||
+        (err instanceof Error ? err.message : "Submission failed");
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -102,6 +107,12 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
                 className="w-full bg-[#111118] border border-[#2a2a3e] rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-violet-500/50 resize-none transition-colors mb-1"
               />
               <div className="text-right text-xs text-slate-600 mb-5">{text.length}/500</div>
+
+              {error && (
+                <p className="text-red-400 text-xs text-center mb-3 bg-red-400/10 rounded-lg px-3 py-2">
+                  {error}
+                </p>
+              )}
 
               {/* Actions */}
               <div className="flex gap-3">
