@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { AnimatePresence } from "framer-motion";
-import { Wifi, WifiOff, Loader2 } from "lucide-react";
+import { Wifi, WifiOff, Loader2, Star } from "lucide-react";
 import { useDebateStore } from "@/store/debateStore";
 import { useDebateWebSocket } from "@/hooks/useWebSocket";
 import { getDebate, getMessages, setAuthToken } from "@/lib/api";
@@ -13,6 +13,7 @@ import { AudienceInput } from "./AudienceInput";
 import { FinalVerdict } from "./FinalVerdict";
 import { ExportReport } from "./ExportReport";
 import { DebateStage } from "./DebateStage";
+import { ReviewModal } from "@/components/shared/ReviewModal";
 import { truncate } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 
@@ -24,6 +25,8 @@ export function DebateArena({ debateId }: { debateId: string }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const userScrolledUp = useRef(false);
   const { isConnected } = useDebateWebSocket(debateId);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const reviewPrompted = useRef(false);
 
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
@@ -65,6 +68,15 @@ export function DebateArena({ debateId }: { debateId: string }) {
     }
   }, [store.messages]);
 
+  // Auto-prompt review when debate completes
+  useEffect(() => {
+    if (store.debate?.status === "completed" && !reviewPrompted.current) {
+      reviewPrompted.current = true;
+      const timer = setTimeout(() => setReviewOpen(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [store.debate?.status]);
+
   const isComplete = store.debate?.status === "completed";
 
   if (store.isLoading && !store.debate) {
@@ -99,6 +111,15 @@ export function DebateArena({ debateId }: { debateId: string }) {
               {isConnected ? t("debate_arena.live") : t("debate_arena.offline")}
             </div>
             {isComplete && <ExportReport debateId={debateId} />}
+            {isComplete && (
+              <button
+                onClick={() => setReviewOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-yellow-400 hover:text-yellow-300 hover:bg-yellow-400/10 border border-yellow-400/20 transition-all"
+              >
+                <Star className="w-3.5 h-3.5" />
+                Leave Review
+              </button>
+            )}
           </div>
         </div>
         <DebateStage current={store.currentStage} />
@@ -201,6 +222,12 @@ export function DebateArena({ debateId }: { debateId: string }) {
           <FinalVerdict verdict={store.verdict} />
         </div>
       )}
+
+      <ReviewModal
+        open={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        debateId={debateId}
+      />
     </div>
   );
 }

@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from app.config import get_settings
 from app.api.debates import router as debates_router
 from app.api.reports import router as reports_router
+from app.api.reviews import router as reviews_router
 from app.api.settings import router as settings_router
 from app.api.ws import router as ws_router
 
@@ -62,6 +63,7 @@ app.add_middleware(
 
 app.include_router(debates_router)
 app.include_router(reports_router)
+app.include_router(reviews_router)
 app.include_router(settings_router)
 app.include_router(ws_router)
 
