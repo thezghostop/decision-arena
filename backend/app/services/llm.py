@@ -59,8 +59,16 @@ class LLMService:
             base_url = cfg.ollama_base_url or settings.ollama_base_url
             model = cfg.ollama_model or settings.ollama_model
             try:
+                import httpx
                 from openai import AsyncOpenAI
-                self._ollama_client = AsyncOpenAI(base_url=f"{base_url}/v1", api_key="ollama")
+                self._ollama_client = AsyncOpenAI(
+                    base_url=f"{base_url}/v1",
+                    api_key="ollama",
+                    http_client=httpx.AsyncClient(
+                        headers={"ngrok-skip-browser-warning": "true"},
+                        timeout=120.0,
+                    ),
+                )
                 self._ollama_model = model
                 self._primary = "ollama"
                 logger.info("User Ollama: %s @ %s", model, base_url)
