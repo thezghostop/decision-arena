@@ -3,9 +3,9 @@ Tests for Decision Arena agents.
 Run with: pytest tests/ -v
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
+import asyncio
+from unittest.mock import AsyncMock, patch, MagicMock
 
 
 @pytest.fixture
@@ -29,7 +29,6 @@ async def test_fallacy_detector_empty(mock_llm):
     """Should return empty list when no fallacies found."""
     mock_llm.generate = AsyncMock(return_value='{"fallacies": []}')
     from app.agents.fallacy_detector import FallacyDetectorAgent
-
     agent = FallacyDetectorAgent()
     result = await agent.detect("This is a reasonable and well-supported argument.")
     assert isinstance(result, list)
@@ -40,7 +39,6 @@ async def test_fact_checker_empty(mock_llm):
     """Should return empty list when no claims found."""
     mock_llm.generate = AsyncMock(return_value='{"claims": []}')
     from app.agents.fact_checker import FactCheckerAgent
-
     agent = FactCheckerAgent()
     result = await agent.check("In my opinion, this is a good idea.")
     assert isinstance(result, list)
@@ -77,7 +75,6 @@ async def test_classify_question_fallback(mock_llm):
 def test_agent_config_validation():
     """AgentConfig should validate field constraints."""
     from app.models.debate import AgentConfig
-
     config = AgentConfig(
         id="test",
         name="Test Agent",
@@ -94,8 +91,8 @@ def test_agent_config_validation():
 
 def test_create_debate_request_validation():
     """Panel must have at least 2 members."""
+    from app.models.debate import CreateDebateRequest, AgentConfig, DebateCategory, DebateMode
     import pytest
-    from app.models.debate import CreateDebateRequest, DebateCategory, DebateMode
 
     with pytest.raises((ValueError, Exception)):  # pydantic raises ValueError
         CreateDebateRequest(
