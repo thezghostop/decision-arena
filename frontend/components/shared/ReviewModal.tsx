@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@clerk/nextjs";
 import { Star, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiClient } from "@/lib/api";
+import { apiClient, setAuthToken } from "@/lib/api";
 
 interface Props {
   open: boolean;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function ReviewModal({ open, onClose, debateId }: Props) {
+  const { getToken } = useAuth();
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [text, setText] = useState("");
@@ -24,6 +26,8 @@ export function ReviewModal({ open, onClose, debateId }: Props) {
     if (rating === 0) return;
     setSubmitting(true);
     try {
+      const token = await getToken();
+      if (token) setAuthToken(token);
       await apiClient.post("/api/v1/reviews/", {
         debate_id: debateId ?? null,
         rating,
