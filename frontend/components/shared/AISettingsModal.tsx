@@ -68,10 +68,11 @@ export function AISettingsModal({ open, onClose }: Props) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm"
       onClick={(e) => e.target === overlayRef.current && onClose()}
     >
-      <div className="w-full max-w-lg mx-4 bg-[#0f0f1a] border border-[#2a2a3e] rounded-2xl shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="flex min-h-full items-center justify-center p-4">
+      <div className="w-full max-w-lg bg-[#0f0f1a] border border-[#2a2a3e] rounded-2xl shadow-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#1e1e2e]">
           <div className="flex items-center gap-3">
@@ -251,6 +252,10 @@ export function AISettingsModal({ open, onClose }: Props) {
           </button>
         </div>
       </div>
+      </div>
+    </div>
+  );
+}
     </div>
   );
 }
