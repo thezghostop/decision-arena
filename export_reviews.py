@@ -88,27 +88,11 @@ def fetch_reviews() -> list[dict]:
     db = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
     result = (
         db.table("reviews")
-        .select("*, users(email, display_name, clerk_id)")
+        .select("*")
         .order("created_at", desc=True)
         .execute()
     )
-    reviews = result.data or []
-
-    # Enrich with real Clerk data
-    clerk_ids = list({
-        r["users"]["clerk_id"]
-        for r in reviews
-        if r.get("users") and r["users"].get("clerk_id")
-    })
-    clerk_map = fetch_clerk_users(clerk_ids)
-
-    for r in reviews:
-        cid = (r.get("users") or {}).get("clerk_id")
-        if cid and cid in clerk_map:
-            r["_clerk_name"] = clerk_map[cid]["name"]
-            r["_clerk_email"] = clerk_map[cid]["email"]
-
-    return reviews
+    return result.data or []
 
 
 # ── Star rendering ────────────────────────────────────────────────────────────
