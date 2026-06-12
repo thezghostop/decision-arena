@@ -23,9 +23,7 @@ export function DecisionHeatmap({ cells }: { cells: HeatmapCell[] }) {
 
   return (
     <div className="glass rounded-xl p-4">
-      <h3 className="text-sm font-semibold text-white mb-4">
-        Decision Heatmap
-      </h3>
+      <h3 className="text-sm font-semibold text-white mb-4">Decision Heatmap</h3>
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
@@ -47,9 +45,7 @@ export function DecisionHeatmap({ cells }: { cells: HeatmapCell[] }) {
           <tbody className="space-y-1">
             {aspects.map((aspect) => (
               <tr key={aspect}>
-                <td className="text-slate-400 py-1 pr-4 font-medium">
-                  {aspect}
-                </td>
+                <td className="text-slate-400 py-1 pr-4 font-medium">{aspect}</td>
                 {agents.map((agent) => {
                   const cell = getCell(aspect, agent);
                   const score = cell?.score ?? 0;
@@ -60,7 +56,7 @@ export function DecisionHeatmap({ cells }: { cells: HeatmapCell[] }) {
                         animate={{ opacity: 1, scale: 1 }}
                         className={cn(
                           "w-8 h-8 rounded-md mx-auto flex items-center justify-center text-white font-bold text-xs",
-                          getHeatColor(score),
+                          getHeatColor(score)
                         )}
                         title={`${aspect} / ${agent}: ${score}`}
                       >

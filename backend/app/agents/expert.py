@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-
+from typing import AsyncIterator, Optional
 from app.agents.base import BaseAgent
 from app.models.debate import AgentConfig, DebateStage
+
 
 STAGE_INSTRUCTIONS: dict[str, str] = {
     "opening": (
@@ -27,7 +27,9 @@ STAGE_INSTRUCTIONS: dict[str, str] = {
         "In 3–4 sentences, defend your position against the strongest challenge. "
         "Acknowledge any valid point, then explain why your overall stance still holds."
     ),
-    "closing": ("2 sentences max. What is the single most important thing the decision-maker must know?"),
+    "closing": (
+        "2 sentences max. What is the single most important thing the decision-maker must know?"
+    ),
 }
 
 LANGUAGE_INSTRUCTIONS: dict[str, str] = {
@@ -48,11 +50,12 @@ LANGUAGE_INSTRUCTIONS: dict[str, str] = {
 class ExpertAgent(BaseAgent):
     """A dynamically configured expert persona."""
 
-    def __init__(self, config: AgentConfig, language: str = "en") -> None:
+    def __init__(self, config: AgentConfig, language: str = "en", llm_service=None) -> None:
         super().__init__(
             agent_id=config.id,
             name=config.name,
             role=config.role,
+            llm_service=llm_service,
         )
         self.config = config
         self.language = language
@@ -81,7 +84,7 @@ class ExpertAgent(BaseAgent):
         stage: DebateStage,
         question: str,
         context: str,
-        audience_question: str | None = None,
+        audience_question: Optional[str] = None,
     ) -> AsyncIterator[str]:
         """Stream the expert's contribution for the given stage."""
         stage_instruction = STAGE_INSTRUCTIONS.get(stage.value, STAGE_INSTRUCTIONS["opening"])

@@ -27,11 +27,11 @@ export function setAuthToken(token: string | null) {
 // Step 1: classify question → get category + suggested panel
 export async function classifyQuestion(
   question: string,
-  mode?: DebateMode,
+  mode?: DebateMode
 ): Promise<ClassifyResponse> {
   const { data } = await apiClient.post<ClassifyResponse>(
     "/api/v1/debates/classify",
-    { question, mode },
+    { question, mode }
   );
   return data;
 }
@@ -40,15 +40,24 @@ export async function classifyQuestion(
 async function _createDebate(payload: CreateDebatePayload): Promise<Debate> {
   const { data } = await apiClient.post<{ debate_id: string; debate: Debate }>(
     "/api/v1/debates/",
-    payload,
+    payload
   );
   return data.debate;
+}
+
+export interface LLMConfig {
+  provider: string;
+  api_key?: string;
+  ollama_base_url?: string;
+  ollama_model?: string;
+  groq_model?: string;
 }
 
 // Public: classify then create in one call
 export async function createDebate(opts: {
   question: string;
   mode: DebateMode;
+  llm_config?: LLMConfig;
 }): Promise<Debate> {
   const classification = await classifyQuestion(opts.question, opts.mode);
   return _createDebate({
@@ -56,6 +65,7 @@ export async function createDebate(opts: {
     category: classification.category,
     mode: opts.mode,
     panel: classification.suggested_panel,
+    llm_config: opts.llm_config,
   });
 }
 
@@ -66,7 +76,7 @@ export async function getDebate(debateId: string): Promise<Debate> {
 
 export async function getMessages(debateId: string): Promise<DebateMessage[]> {
   const { data } = await apiClient.get<DebateMessage[]>(
-    `/api/v1/debates/${debateId}/messages`,
+    `/api/v1/debates/${debateId}/messages`
   );
   // Derive `role` for MessageBubble rendering
   return data.map((m) => ({
@@ -85,16 +95,17 @@ export async function listDebates(): Promise<Debate[]> {
 }
 
 export async function injectAudienceQuestion(
-  payload: AudienceInjectionRequest,
+  payload: AudienceInjectionRequest
 ): Promise<void> {
-  await apiClient.post(`/api/v1/debates/${payload.debate_id}/inject`, {
-    question: payload.question,
-  });
+  await apiClient.post(
+    `/api/v1/debates/${payload.debate_id}/inject`,
+    { question: payload.question }
+  );
 }
 
 export async function exportDebateReport(debateId: string): Promise<string> {
   const { data } = await apiClient.post<{ download_url: string }>(
-    `/api/v1/reports/${debateId}`,
+    `/api/v1/reports/${debateId}`
   );
   return data.download_url;
 }

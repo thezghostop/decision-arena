@@ -30,7 +30,7 @@ export function DebateStage({ current }: { current: DebateStageType | null }) {
                 isCurrent &&
                   "bg-violet-600/20 text-violet-300 border border-violet-500/30",
                 isCompleted && "text-slate-500",
-                !isCurrent && !isCompleted && "text-slate-600",
+                !isCurrent && !isCompleted && "text-slate-600"
               )}
             >
               {getStageLabel(stage)}
@@ -39,7 +39,7 @@ export function DebateStage({ current }: { current: DebateStageType | null }) {
               <div
                 className={cn(
                   "w-4 h-px",
-                  i < currentIndex ? "bg-violet-500/40" : "bg-[#1e1e2e]",
+                  i < currentIndex ? "bg-violet-500/40" : "bg-[#1e1e2e]"
                 )}
               />
             )}

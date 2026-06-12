@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-
 from app.agents.base import BaseAgent
-from app.models.message import FactStatus, FactTag
+from app.models.message import FactTag, FactStatus
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +30,18 @@ class FactCheckerAgent(BaseAgent):
     async def check(self, text: str) -> list[FactTag]:
         """Identify and evaluate factual claims in the text."""
         prompt = (
-            f'Identify and evaluate factual claims in this argument:\n\n"{text}"\n\n'
+            f"Identify and evaluate factual claims in this argument:\n\n\"{text}\"\n\n"
             "Return ONLY valid JSON:\n"
             '{"claims": [\n'
-            "  {\n"
+            '  {\n'
             '    "claim": "exact claim from the text",\n'
             '    "status": "supported|weak_evidence|needs_verification|contested",\n'
             '    "confidence": 0.85,\n'
             '    "note": "brief optional explanation"\n'
-            "  }\n"
-            "]}\n\n"
+            '  }\n'
+            ']}\n\n'
             "Only flag claims that are verifiable factual assertions (not opinions). "
-            'Confidence is 0.0–1.0. Return {"claims": []} if no clear factual claims.'
+            "Confidence is 0.0–1.0. Return {\"claims\": []} if no clear factual claims."
         )
 
         try:

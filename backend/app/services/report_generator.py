@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import io
 import logging
-from datetime import UTC, datetime
+import os
+from datetime import datetime, timezone
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +15,7 @@ async def generate_pdf_report(
     debate: dict,
     messages: list[dict],
     scores: list[dict],
-    verdict: dict | None,
+    verdict: Optional[dict],
 ) -> str:
     """
     Generate a PDF report and return a data URI or storage URL.
@@ -28,13 +30,15 @@ async def generate_pdf_report(
         raise RuntimeError(f"Failed to generate report: {exc}") from exc
 
 
-def _build_pdf(debate: dict, messages: list[dict], scores: list[dict], verdict: dict | None) -> bytes:
+def _build_pdf(debate: dict, messages: list[dict], scores: list[dict], verdict: Optional[dict]) -> bytes:
     """Build PDF using ReportLab."""
-    from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
-    from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    )
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -61,21 +65,15 @@ def _build_pdf(debate: dict, messages: list[dict], scores: list[dict], verdict: 
 
     # Question
     q_style = ParagraphStyle(
-        "Question",
-        parent=styles["Normal"],
-        fontSize=14,
-        textColor=colors.HexColor("#1E293B"),
-        spaceBefore=4,
-        spaceAfter=12,
+        "Question", parent=styles["Normal"],
+        fontSize=14, textColor=colors.HexColor("#1E293B"), spaceBefore=4, spaceAfter=12,
     )
     story.append(Paragraph(f'<b>Question:</b> {debate.get("question", "")}', q_style))
-    story.append(
-        Paragraph(
-            f'Category: {debate.get("category", "")} | Mode: {debate.get("mode", "")} | '
-            f'Generated: {datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")}',
-            styles["Normal"],
-        )
-    )
+    story.append(Paragraph(
+        f'Category: {debate.get("category", "")} | Mode: {debate.get("mode", "")} | '
+        f'Generated: {datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")}',
+        styles["Normal"]
+    ))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#E2E8F0"), spaceBefore=12, spaceAfter=12))
 
     # Executive Summary
@@ -89,33 +87,27 @@ def _build_pdf(debate: dict, messages: list[dict], scores: list[dict], verdict: 
         story.append(Paragraph("<b>Expert Scoreboard</b>", styles["Heading2"]))
         score_data = [["Expert", "Logic", "Evidence", "Practicality", "Risk", "Overall"]]
         for s in scores:
-            score_data.append(
-                [
-                    s.get("agent_name", s.get("agent_id", "?")),
-                    f"{s.get('logic_score', 0):.0f}",
-                    f"{s.get('evidence_score', 0):.0f}",
-                    f"{s.get('practicality_score', 0):.0f}",
-                    f"{s.get('risk_awareness_score', 0):.0f}",
-                    f"{s.get('overall_score', 0):.0f}",
-                ]
-            )
+            score_data.append([
+                s.get("agent_name", s.get("agent_id", "?")),
+                f"{s.get('logic_score', 0):.0f}",
+                f"{s.get('evidence_score', 0):.0f}",
+                f"{s.get('practicality_score', 0):.0f}",
+                f"{s.get('risk_awareness_score', 0):.0f}",
+                f"{s.get('overall_score', 0):.0f}",
+            ])
         t = Table(score_data, colWidths=[4 * cm, 2 * cm, 2 * cm, 2.5 * cm, 2 * cm, 2 * cm])
-        t.setStyle(
-            TableStyle(
-                [
-                    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7C3AED")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 9),
-                    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
-                    ("ALIGN", (1, 0), (-1, -1), "CENTER"),
-                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ]
-            )
-        )
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7C3AED")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#E2E8F0")),
+            ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("TOPPADDING", (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
         story.append(t)
         story.append(Spacer(1, 12))
 
@@ -158,7 +150,6 @@ def _build_pdf(debate: dict, messages: list[dict], scores: list[dict], verdict: 
 async def _upload_pdf(debate_id: str, pdf_bytes: bytes) -> str:
     """Upload PDF to Supabase Storage and return signed URL."""
     from app.database import get_supabase
-
     supabase = get_supabase()
     filename = f"reports/{debate_id}.pdf"
 
@@ -174,6 +165,5 @@ async def _upload_pdf(debate_id: str, pdf_bytes: bytes) -> str:
         logger.warning("Supabase storage upload failed: %s", exc)
         # Fallback: return as base64 data URI
         import base64
-
         b64 = base64.b64encode(pdf_bytes).decode()
         return f"data:application/pdf;base64,{b64}"

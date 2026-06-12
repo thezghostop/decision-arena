@@ -11,9 +11,9 @@ import { Loader2, Clock, CheckCircle, ArrowRight, Brain } from "lucide-react";
 
 const STATUS_STYLES = {
   completed: "text-green-400 bg-green-500/10 border-green-500/30",
-  running: "text-violet-400 bg-violet-500/10 border-violet-500/30",
+  active: "text-violet-400 bg-violet-500/10 border-violet-500/30",
   pending: "text-yellow-400 bg-yellow-500/10 border-yellow-500/30",
-  error: "text-red-400 bg-red-500/10 border-red-500/30",
+  failed: "text-red-400 bg-red-500/10 border-red-500/30",
 };
 
 export function DebateHistory() {
@@ -37,9 +37,7 @@ export function DebateHistory() {
       }
     };
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -87,7 +85,7 @@ export function DebateHistory() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-white group-hover:text-violet-300 transition-colors line-clamp-2">
-                        {debate.question}
+                        {debate.topic}
                       </p>
                       <div className="flex items-center gap-3 mt-2">
                         <span className="text-xs text-slate-500 capitalize flex items-center gap-1">

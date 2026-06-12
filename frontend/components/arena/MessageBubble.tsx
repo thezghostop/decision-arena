@@ -44,9 +44,7 @@ export function MessageBubble({ message }: { message: DebateMessage }) {
         <Info className="w-4 h-4 text-violet-400 mt-0.5 shrink-0" />
         <div>
           <p className="text-xs text-violet-400 font-medium mb-1">Moderator</p>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            {message.content}
-          </p>
+          <p className="text-sm text-slate-300 leading-relaxed">{message.content}</p>
         </div>
       </motion.div>
     );
@@ -64,9 +62,7 @@ export function MessageBubble({ message }: { message: DebateMessage }) {
           <p className="text-xs text-cyan-400 font-medium mb-1">
             Audience Question
           </p>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            {message.content}
-          </p>
+          <p className="text-sm text-slate-300 leading-relaxed">{message.content}</p>
         </div>
       </motion.div>
     );
@@ -103,7 +99,7 @@ export function MessageBubble({ message }: { message: DebateMessage }) {
         <p
           className={cn(
             "text-base text-slate-300 leading-relaxed whitespace-pre-wrap",
-            message.is_streaming && "streaming-cursor",
+            message.is_streaming && "streaming-cursor"
           )}
         >
           {message.content}
@@ -117,7 +113,7 @@ export function MessageBubble({ message }: { message: DebateMessage }) {
                 key={i}
                 className={cn(
                   "flex items-start gap-2 text-xs px-3 py-2 rounded-lg border",
-                  FALLACY_COLORS[f.severity],
+                  FALLACY_COLORS[f.severity]
                 )}
               >
                 <AlertTriangle className="w-3 h-3 mt-0.5 shrink-0" />
@@ -137,7 +133,7 @@ export function MessageBubble({ message }: { message: DebateMessage }) {
                 key={i}
                 className={cn(
                   "flex items-center gap-1 text-xs px-2 py-1 rounded border",
-                  FACT_COLORS[tag.verdict],
+                  FACT_COLORS[tag.verdict]
                 )}
               >
                 {tag.verdict === "verified" ? (

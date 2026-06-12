@@ -1,7 +1,7 @@
+from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import datetime
 from enum import Enum
-
-from pydantic import BaseModel, Field
 
 
 class HeatmapCategory(str, Enum):
@@ -48,12 +48,12 @@ class VerdictResponse(BaseModel):
 class ShareLinkResponse(BaseModel):
     slug: str
     url: str
-    expires_at: datetime | None = None
+    expires_at: Optional[datetime] = None
 
 
 class ReportResponse(BaseModel):
     download_url: str
-    expires_at: datetime | None = None
+    expires_at: Optional[datetime] = None
 
 
 class PublicReportResponse(BaseModel):

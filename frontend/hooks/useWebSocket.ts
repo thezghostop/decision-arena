@@ -74,7 +74,7 @@ export function useDebateWebSocket(debateId: string | null) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debateId],
+    [debateId]
   );
 
   useEffect(() => {
@@ -109,9 +109,8 @@ export function useDebateWebSocket(debateId: string | null) {
           "error",
         ] as const;
 
-        cleanups = events.map((event) =>
-          wsManager.on(event as any, handleMessage as any),
-        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cleanups = events.map((event) => wsManager.on(event as any, handleMessage as any));
       })
       .catch(console.error);
 

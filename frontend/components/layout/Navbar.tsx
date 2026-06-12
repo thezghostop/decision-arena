@@ -1,16 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUser, UserButton } from "@clerk/nextjs";
-import { Brain, History, PlusCircle } from "lucide-react";
+import { Brain, History, PlusCircle, Cpu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n, LOCALES } from "@/lib/i18n";
+import { AISettingsModal } from "@/components/shared/AISettingsModal";
+import { useAISettings } from "@/hooks/useAISettings";
 
 export function Navbar() {
   const pathname = usePathname();
   const { isSignedIn } = useUser();
   const { t, locale, setLocale } = useI18n();
+  const [aiOpen, setAiOpen] = useState(false);
+  const { settings } = useAISettings();
 
   const links = [
     { href: "/arena", label: t("nav.newDebate"), icon: PlusCircle },
@@ -36,7 +41,7 @@ export function Navbar() {
                 "flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors",
                 pathname === href
                   ? "bg-violet-600/20 text-violet-300"
-                  : "text-slate-400 hover:text-white hover:bg-white/5",
+                  : "text-slate-400 hover:text-white hover:bg-white/5"
               )}
             >
               <Icon className="w-4 h-4" />
@@ -55,13 +60,36 @@ export function Navbar() {
                   "px-2 py-1 rounded-md text-xs font-medium transition-colors",
                   locale === l.code
                     ? "bg-violet-600 text-white"
-                    : "text-slate-400 hover:text-white",
+                    : "text-slate-400 hover:text-white"
                 )}
               >
                 {l.script}
               </button>
             ))}
           </div>
+
+          {/* AI provider indicator + settings button */}
+          <button
+            onClick={() => setAiOpen(true)}
+            title="AI Provider Settings"
+            className={cn(
+              "ml-1 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all",
+              settings.provider === "ollama"
+                ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+                : settings.provider !== "server"
+                ? "border-violet-500/40 text-violet-300 bg-violet-500/10 hover:bg-violet-500/20"
+                : "border-[#1e1e2e] text-slate-400 bg-transparent hover:bg-white/5"
+            )}
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">
+              {settings.provider === "server"
+                ? "Default AI"
+                : settings.provider === "ollama"
+                ? `Ollama · ${settings.ollamaModel || "local"}`
+                : settings.provider.charAt(0).toUpperCase() + settings.provider.slice(1)}
+            </span>
+          </button>
 
           {isSignedIn && (
             <div className="ml-2">
@@ -70,6 +98,8 @@ export function Navbar() {
           )}
         </div>
       </div>
+
+      <AISettingsModal open={aiOpen} onClose={() => setAiOpen(false)} />
     </nav>
   );
 }

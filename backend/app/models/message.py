@@ -1,7 +1,7 @@
+from pydantic import BaseModel
+from typing import Optional
 from datetime import datetime
 from enum import Enum
-
-from pydantic import BaseModel
 
 
 class MessageType(str, Enum):
@@ -48,7 +48,7 @@ class FactTag(BaseModel):
     claim: str
     status: FactStatus
     confidence: float
-    note: str | None = None
+    note: Optional[str] = None
 
 
 class DebateMessageResponse(BaseModel):
@@ -56,9 +56,9 @@ class DebateMessageResponse(BaseModel):
     debate_id: str
     agent_id: str
     agent_name: str
-    agent_role: str | None = None
-    agent_icon: str | None = None
-    agent_color: str | None = None
+    agent_role: Optional[str] = None
+    agent_icon: Optional[str] = None
+    agent_color: Optional[str] = None
     stage: str
     content: str
     message_type: MessageType

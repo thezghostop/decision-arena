@@ -15,11 +15,7 @@ interface AudienceInputProps {
   onSent?: () => void;
 }
 
-export function AudienceInput({
-  debateId,
-  isComplete,
-  onSent,
-}: AudienceInputProps) {
+export function AudienceInput({ debateId, isComplete, onSent }: AudienceInputProps) {
   const { getToken } = useAuth();
   const { t } = useI18n();
   const [question, setQuestion] = useState("");
@@ -62,9 +58,7 @@ export function AudienceInput({
         className="flex items-center gap-2 text-sm text-slate-400 hover:text-violet-400 transition-colors"
       >
         <MessageSquare className="w-4 h-4" />
-        {isComplete
-          ? t("audience.submit") + " follow-up"
-          : t("audience.placeholder")}
+        {isComplete ? t("audience.submit") + " follow-up" : t("audience.placeholder")}
       </button>
 
       <AnimatePresence>

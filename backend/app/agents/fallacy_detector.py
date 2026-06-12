@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
-
+from typing import Optional
 from app.agents.base import BaseAgent
-from app.models.message import Fallacy, FallacySeverity, FallacyType
+from app.models.message import Fallacy, FallacyType, FallacySeverity
 
 logger = logging.getLogger(__name__)
 
@@ -31,18 +31,18 @@ class FallacyDetectorAgent(BaseAgent):
     async def detect(self, text: str) -> list[Fallacy]:
         """Detect fallacies in the given text. Returns empty list if none found."""
         prompt = (
-            f'Analyze this argument for logical fallacies:\n\n"{text}"\n\n'
+            f"Analyze this argument for logical fallacies:\n\n\"{text}\"\n\n"
             "Return ONLY valid JSON:\n"
             '{"fallacies": [\n'
-            "  {\n"
+            '  {\n'
             '    "type": "strawman|false_dilemma|circular_reasoning|ad_hominem'
             '|appeal_to_authority|hasty_generalization|slippery_slope|false_equivalence",\n'
             '    "excerpt": "exact short quote from the text",\n'
             '    "explanation": "1-2 sentence explanation of the fallacy",\n'
             '    "severity": "low|medium|high"\n'
-            "  }\n"
-            "]}\n\n"
-            'Only include genuine, clear fallacies. Return {"fallacies": []} if none found.'
+            '  }\n'
+            ']}\n\n'
+            "Only include genuine, clear fallacies. Return {\"fallacies\": []} if none found."
         )
 
         try:

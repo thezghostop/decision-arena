@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterator
-
-from app.services.llm import get_llm_service
+from typing import AsyncIterator, Optional
+from app.services.llm import LLMService, get_llm_service
 
 
 class BaseAgent(ABC):
     """Abstract base for all agents."""
 
-    def __init__(self, agent_id: str, name: str, role: str) -> None:
+    def __init__(
+        self,
+        agent_id: str,
+        name: str,
+        role: str,
+        llm_service: Optional[LLMService] = None,
+    ) -> None:
         self.agent_id = agent_id
         self.name = name
         self.role = role
-        self._llm = get_llm_service()
+        self._llm = llm_service or get_llm_service()
 
     @property
     @abstractmethod
@@ -26,8 +31,8 @@ class BaseAgent(ABC):
     async def generate(
         self,
         user_prompt: str,
-        temperature: float | None = None,
-        max_tokens: int | None = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
     ) -> str:
         return await self._llm.generate(
             system_prompt=self.system_prompt,

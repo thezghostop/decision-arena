@@ -6,15 +6,13 @@ import asyncio
 import json
 import logging
 import uuid
-from datetime import UTC
-
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
-
-from app.api.debates import get_active_debates
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from app.auth import get_current_user
 from app.database import DatabaseService
 from app.engine.orchestrator import DebateOrchestrator
-from app.models.debate import AgentConfig, DebateStage
+from app.api.debates import get_active_debates
+from app.models.debate import AgentConfig, DebateStage, LLMProviderConfig
+from app.models.message import MessageType
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["websocket"])
@@ -30,7 +28,6 @@ async def debate_websocket(
     # Validate token
     try:
         from fastapi.security import HTTPAuthorizationCredentials
-
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         user = await get_current_user(creds)
     except Exception:
@@ -72,6 +69,11 @@ async def debate_websocket(
         event_queue.put_nowait(event)
 
     panel = [AgentConfig(**p) if isinstance(p, dict) else p for p in debate.get("panel", [])]
+
+    # Restore per-debate LLM config saved at creation time
+    raw_llm = debate.get("llm_config")
+    llm_config = LLMProviderConfig(**raw_llm) if isinstance(raw_llm, dict) else None
+
     orchestrator = DebateOrchestrator(
         debate_id=debate_id,
         question=debate["question"],
@@ -80,6 +82,7 @@ async def debate_websocket(
         on_event=on_event,
         db_service=db,
         language=lang,
+        llm_config=llm_config,
     )
 
     active[debate_id] = orchestrator
@@ -119,7 +122,10 @@ async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService, lang
     # Build a short context from the last few saved messages
     try:
         saved = await db.get_messages(debate_id)
-        context_lines = [f"[{m['agent_name']}]: {m['content'][:150]}" for m in (saved or [])[-8:]]
+        context_lines = [
+            f"[{m['agent_name']}]: {m['content'][:150]}"
+            for m in (saved or [])[-8:]
+        ]
         base_context = "\n".join(context_lines)
     except Exception:
         base_context = ""
@@ -156,20 +162,18 @@ async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService, lang
                 msg_id = str(uuid.uuid4())
                 seq += 1
 
-                await send(
-                    {
-                        "type": "message_start",
-                        "messageId": msg_id,
-                        "agentId": agent_cfg.id,
-                        "agentName": agent_cfg.name,
-                        "agentRole": agent_cfg.role,
-                        "agentIcon": agent_cfg.icon,
-                        "agentColor": agent_cfg.color,
-                        "stage": "audience_intervention",
-                        "messageType": "argument",
-                        "sequenceNum": seq,
-                    }
-                )
+                await send({
+                    "type": "message_start",
+                    "messageId": msg_id,
+                    "agentId": agent_cfg.id,
+                    "agentName": agent_cfg.name,
+                    "agentRole": agent_cfg.role,
+                    "agentIcon": agent_cfg.icon,
+                    "agentColor": agent_cfg.color,
+                    "stage": "audience_intervention",
+                    "messageType": "argument",
+                    "sequenceNum": seq,
+                })
 
                 full_content = ""
                 try:
@@ -184,41 +188,31 @@ async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService, lang
                 except Exception as exc:
                     logger.warning("Q&A expert speak error: %s", exc)
 
-                await send(
-                    {
-                        "type": "message_complete",
-                        "messageId": msg_id,
-                        "fallacies": [],
-                        "factTags": [],
-                    }
-                )
+                await send({"type": "message_complete", "messageId": msg_id, "fallacies": [], "factTags": []})
 
                 # Persist Q&A message
                 try:
-                    from datetime import datetime
-
-                    await db.save_message(
-                        {
-                            "id": msg_id,
-                            "debate_id": debate_id,
-                            "agent_id": agent_cfg.id,
-                            "agent_name": agent_cfg.name,
-                            "agent_role": agent_cfg.role,
-                            "agent_icon": agent_cfg.icon,
-                            "agent_color": agent_cfg.color,
-                            "stage": "audience_intervention",
-                            "content": full_content,
-                            "message_type": "argument",
-                            "fallacies": [],
-                            "fact_tags": [],
-                            "sequence_num": seq,
-                            "created_at": datetime.now(UTC).isoformat(),
-                        }
-                    )
+                    from datetime import datetime, timezone
+                    await db.save_message({
+                        "id": msg_id,
+                        "debate_id": debate_id,
+                        "agent_id": agent_cfg.id,
+                        "agent_name": agent_cfg.name,
+                        "agent_role": agent_cfg.role,
+                        "agent_icon": agent_cfg.icon,
+                        "agent_color": agent_cfg.color,
+                        "stage": "audience_intervention",
+                        "content": full_content,
+                        "message_type": "argument",
+                        "fallacies": [],
+                        "fact_tags": [],
+                        "sequence_num": seq,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
                 except Exception as exc:
                     logger.warning("Q&A DB save error: %s", exc)
 
-        except TimeoutError:
+        except asyncio.TimeoutError:
             # 10-minute idle timeout
             break
         except WebSocketDisconnect:
@@ -246,7 +240,7 @@ async def _drain_events(
             await websocket.send_text(json.dumps(event))
             if event.get("type") == "debate_complete":
                 break
-        except TimeoutError:
+        except asyncio.TimeoutError:
             if debate_task.done():
                 while not queue.empty():
                     event = queue.get_nowait()
