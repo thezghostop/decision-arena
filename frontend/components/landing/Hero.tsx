@@ -3,7 +3,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { useDebateStore } from "@/store/debateStore";
 import { classifyQuestion } from "@/lib/api";
 import { ArrowRight, Zap, Sparkles } from "lucide-react";
 import type { DebateMode } from "@/types";
@@ -55,35 +54,16 @@ export function Hero() {
   const [exampleIdx, setExampleIdx] = useState(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const {
-    setQuestion: storeSetQuestion,
-    setMode,
-    setPanel,
-    setCategory,
-    setIsClassifying,
-  } = useDebateStore();
-
   const handleSubmit = async () => {
     if (!question.trim() || isLoading) return;
     setIsLoading(true);
-
     try {
-      storeSetQuestion(question.trim());
-      setMode(selectedMode);
-      setIsClassifying(true);
-
-      const result = await classifyQuestion(question.trim(), selectedMode);
-      setCategory(result.category);
-      setPanel(result.suggestedPanel);
-
-      router.push("/arena");
+      router.push(`/arena?q=${encodeURIComponent(question.trim())}&mode=${selectedMode}`);
     } catch (err) {
-      console.error("Classification failed:", err);
-      // Still navigate — arena page will handle retry
+      console.error("Navigation failed:", err);
       router.push("/arena");
     } finally {
       setIsLoading(false);
-      setIsClassifying(false);
     }
   };
 
