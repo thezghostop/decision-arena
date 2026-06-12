@@ -60,12 +60,9 @@ export function useAISettings() {
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 4000);
-      let res: Response;
-      try {
-        res = await fetch(`${url}/api/tags`, { signal: controller.signal });
-      } finally {
-        clearTimeout(timer);
-      }
+      const res = await fetch(`${url}/api/tags`, { signal: controller.signal }).finally(() =>
+        clearTimeout(timer)
+      );
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const models: OllamaModel[] = (data.models ?? []).map((m: any) => ({
