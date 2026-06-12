@@ -125,6 +125,7 @@ class DatabaseService:
             self.db.table("agent_scores").upsert({
                 "debate_id": debate_id,
                 "agent_id": score["agent_id"],
+                "agent_name": score.get("agent_name", score["agent_id"]),
                 "logic_score": score.get("logic"),
                 "evidence_score": score.get("evidence"),
                 "practicality_score": score.get("practicality"),
