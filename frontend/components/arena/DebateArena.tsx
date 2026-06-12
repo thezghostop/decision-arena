@@ -91,7 +91,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Header */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-4">
@@ -126,7 +126,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
       </div>
 
       {/* Main debate layout: messages + sidebar */}
-      <div className="flex gap-6">
+      <div className="flex flex-col-reverse gap-4 lg:flex-row lg:gap-6">
         {/* Messages */}
         <div className="flex-1 min-w-0">
           <div
@@ -159,7 +159,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
         </div>
 
         {/* Sidebar */}
-        <div className="w-72 shrink-0 space-y-4">
+        <div className="w-full lg:w-72 lg:shrink-0 space-y-4">
           {store.debate && store.debate.panel.length > 0 && (
             <div className="glass rounded-xl p-4">
               <h3 className="text-sm font-semibold text-white mb-3">{t("debate_arena.expert_panel")}</h3>
