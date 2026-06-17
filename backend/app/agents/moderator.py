@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-
+from typing import AsyncIterator
 from app.agents.base import BaseAgent
 from app.models.debate import DebateStage
+
 
 STAGE_INTROS: dict[str, str] = {
     "opening": "Opening Statements",
@@ -96,14 +96,23 @@ class ModeratorAgent(BaseAgent):
         self,
         question: str,
         debate_summary: str,
+        decision_parameters: list[str] | None = None,
     ) -> str:
         """Non-streaming verdict synthesis — returns full JSON-structured verdict."""
         lang_instruction = LANGUAGE_INSTRUCTIONS.get(self.language, "")
+        params_instruction = (
+            f"Decision parameters the debate was meant to cover: {', '.join(decision_parameters)}. "
+            "Make sure consensus_areas/disagreements/risks/opportunities collectively touch on "
+            "more than one of these parameters — do not let the verdict fixate on a single one.\n\n"
+            if decision_parameters
+            else ""
+        )
         prompt = (
             f"Decision under debate: '{question}'\n\n"
             f"Full debate summary:\n{debate_summary}\n\n"
+            f"{params_instruction}"
             "Synthesize a comprehensive verdict. Return ONLY valid JSON with this exact structure:\n"
-            "{\n"
+            '{\n'
             '  "executive_summary": "2-3 sentence summary of the debate and final recommendation",\n'
             '  "consensus_areas": ["area 1", "area 2"],\n'
             '  "disagreements": ["disagreement 1", "disagreement 2"],\n'
@@ -116,8 +125,8 @@ class ModeratorAgent(BaseAgent):
             '    {"label": "Revenue Potential", "value": 85, "category": "benefit", "description": "..."},\n'
             '    {"label": "Capital Required", "value": 60, "category": "cost", "description": "..."},\n'
             '    {"label": "Competitive Gap", "value": 70, "category": "opportunity", "description": "..."}\n'
-            "  ]\n"
-            "}\n\n"
+            '  ]\n'
+            '}\n\n'
             "Generate at least 3 items per category. confidence_score must be between 0.0 and 1.0."
             f"{lang_instruction}"
         )

@@ -5,7 +5,8 @@
     "getStarted": "शुरू करें",
     "enterArena": "एरेना में जाएं",
     "newDebate": "नई बहस",
-    "history": "इतिहास"
+    "history": "इतिहास",
+    "documents": "दस्तावेज़"
   },
   "hero": {
     "badge": "Groq द्वारा संचालित",
@@ -104,7 +105,8 @@
     "assembling": "पैनल तैयार हो रहा है…",
     "expert_panel": "विशेषज्ञ पैनल",
     "deliberating": "विचार-विमर्श जारी है…",
-    "synthesising": "पैनल अंतिम निर्णय तैयार कर रहा है"
+    "synthesising": "पैनल अंतिम निर्णय तैयार कर रहा है",
+    "parameters_label": "चर्चा के विषय:"
   },
   "export": {
     "button": "PDF निर्यात करें",

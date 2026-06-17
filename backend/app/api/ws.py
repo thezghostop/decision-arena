@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import uuid
-from datetime import UTC
-
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
-
-from app.api.debates import get_active_debates
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 from app.auth import get_current_user
 from app.database import DatabaseService
 from app.engine.orchestrator import DebateOrchestrator
+from app.api.debates import get_active_debates
 from app.models.debate import AgentConfig, DebateStage, LLMProviderConfig
+from app.models.message import MessageType
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["websocket"])
@@ -30,7 +29,6 @@ async def debate_websocket(
     # Validate token
     try:
         from fastapi.security import HTTPAuthorizationCredentials
-
         creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
         user = await get_current_user(creds)
     except Exception:
@@ -90,13 +88,26 @@ async def debate_websocket(
 
     active[debate_id] = orchestrator
     debate_task = asyncio.create_task(orchestrator.run())
+    read_client_task = asyncio.create_task(_read_client(websocket, orchestrator))
 
     try:
-        await asyncio.gather(
-            _drain_events(websocket, event_queue, debate_task),
-            _read_client(websocket, orchestrator),
-            return_exceptions=True,
-        )
+        completed_normally = await _drain_events(websocket, event_queue, debate_task)
+
+        # The live debate just finished on this same connection. The old client
+        # reader's "inject" path feeds a queue the orchestrator no longer drains
+        # (run() has already returned), so it would silently swallow any
+        # follow-up question sent after this point. Cancel it and hand this
+        # still-open socket to Q&A mode, which streams a real expert response
+        # for every follow-up instead of dropping it.
+        read_client_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError, Exception):
+            await read_client_task
+
+        if completed_normally:
+            fresh_debate = await db.get_debate(debate_id)
+            if fresh_debate and fresh_debate.get("status") == "completed":
+                await _qa_mode(websocket, fresh_debate, db, lang)
+                return
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: %s", debate_id)
         orchestrator.stop()
@@ -105,6 +116,7 @@ async def debate_websocket(
     finally:
         orchestrator.stop()
         debate_task.cancel()
+        read_client_task.cancel()
         active.pop(debate_id, None)
         try:
             await websocket.close()
@@ -125,7 +137,10 @@ async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService, lang
     # Build a short context from the last few saved messages
     try:
         saved = await db.get_messages(debate_id)
-        context_lines = [f"[{m['agent_name']}]: {m['content'][:150]}" for m in (saved or [])[-8:]]
+        context_lines = [
+            f"[{m['agent_name']}]: {m['content'][:150]}"
+            for m in (saved or [])[-8:]
+        ]
         base_context = "\n".join(context_lines)
     except Exception:
         base_context = ""
@@ -162,20 +177,18 @@ async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService, lang
                 msg_id = str(uuid.uuid4())
                 seq += 1
 
-                await send(
-                    {
-                        "type": "message_start",
-                        "messageId": msg_id,
-                        "agentId": agent_cfg.id,
-                        "agentName": agent_cfg.name,
-                        "agentRole": agent_cfg.role,
-                        "agentIcon": agent_cfg.icon,
-                        "agentColor": agent_cfg.color,
-                        "stage": "audience_intervention",
-                        "messageType": "argument",
-                        "sequenceNum": seq,
-                    }
-                )
+                await send({
+                    "type": "message_start",
+                    "messageId": msg_id,
+                    "agentId": agent_cfg.id,
+                    "agentName": agent_cfg.name,
+                    "agentRole": agent_cfg.role,
+                    "agentIcon": agent_cfg.icon,
+                    "agentColor": agent_cfg.color,
+                    "stage": "audience_intervention",
+                    "messageType": "argument",
+                    "sequenceNum": seq,
+                })
 
                 full_content = ""
                 try:
@@ -194,30 +207,27 @@ async def _qa_mode(websocket: WebSocket, debate: dict, db: DatabaseService, lang
 
                 # Persist Q&A message
                 try:
-                    from datetime import datetime
-
-                    await db.save_message(
-                        {
-                            "id": msg_id,
-                            "debate_id": debate_id,
-                            "agent_id": agent_cfg.id,
-                            "agent_name": agent_cfg.name,
-                            "agent_role": agent_cfg.role,
-                            "agent_icon": agent_cfg.icon,
-                            "agent_color": agent_cfg.color,
-                            "stage": "audience_intervention",
-                            "content": full_content,
-                            "message_type": "argument",
-                            "fallacies": [],
-                            "fact_tags": [],
-                            "sequence_num": seq,
-                            "created_at": datetime.now(UTC).isoformat(),
-                        }
-                    )
+                    from datetime import datetime, timezone
+                    await db.save_message({
+                        "id": msg_id,
+                        "debate_id": debate_id,
+                        "agent_id": agent_cfg.id,
+                        "agent_name": agent_cfg.name,
+                        "agent_role": agent_cfg.role,
+                        "agent_icon": agent_cfg.icon,
+                        "agent_color": agent_cfg.color,
+                        "stage": "audience_intervention",
+                        "content": full_content,
+                        "message_type": "argument",
+                        "fallacies": [],
+                        "fact_tags": [],
+                        "sequence_num": seq,
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                    })
                 except Exception as exc:
                     logger.warning("Q&A DB save error: %s", exc)
 
-        except TimeoutError:
+        except asyncio.TimeoutError:
             # 10-minute idle timeout
             break
         except WebSocketDisconnect:
@@ -238,24 +248,33 @@ async def _drain_events(
     websocket: WebSocket,
     queue: asyncio.Queue,
     debate_task: asyncio.Task,
-) -> None:
+) -> bool:
+    """Forward orchestrator events to the client.
+
+    Returns True if the debate completed normally (a "debate_complete" event
+    was observed and forwarded), False if it ended early (stopped/errored)
+    without one — callers use this to decide whether it's safe to hand the
+    connection off to Q&A mode.
+    """
     while True:
         try:
             event = await asyncio.wait_for(queue.get(), timeout=1.0)
             await websocket.send_text(json.dumps(event))
             if event.get("type") == "debate_complete":
-                break
-        except TimeoutError:
+                return True
+        except asyncio.TimeoutError:
             if debate_task.done():
                 while not queue.empty():
                     event = queue.get_nowait()
                     await websocket.send_text(json.dumps(event))
-                break
+                    if event.get("type") == "debate_complete":
+                        return True
+                return False
         except WebSocketDisconnect:
             raise
         except Exception as exc:
             logger.warning("Event drain error: %s", exc)
-            break
+            return False
 
 
 async def _read_client(websocket: WebSocket, orchestrator: DebateOrchestrator) -> None:

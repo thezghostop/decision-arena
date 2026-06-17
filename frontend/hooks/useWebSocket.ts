@@ -20,6 +20,12 @@ export function useDebateWebSocket(debateId: string | null) {
           store.setStage(msg.stage);
           break;
         }
+        case "decision_parameters": {
+          store.setDecisionParameters(
+            Array.isArray(msg.parameters) ? msg.parameters : []
+          );
+          break;
+        }
         case "message_start": {
           const isModeratorMsg =
             msg.agentId === "moderator" || msg.messageType === "moderation";
@@ -64,9 +70,7 @@ export function useDebateWebSocket(debateId: string | null) {
         case "debate_complete": {
           const current = useDebateStore.getState().debate;
           if (current) {
-            useDebateStore
-              .getState()
-              .setDebate({ ...current, status: "completed" });
+            useDebateStore.getState().setDebate({ ...current, status: "completed" });
           }
           break;
         }
@@ -77,7 +81,7 @@ export function useDebateWebSocket(debateId: string | null) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [debateId],
+    [debateId]
   );
 
   useEffect(() => {
@@ -102,6 +106,7 @@ export function useDebateWebSocket(debateId: string | null) {
         const events = [
           "debate_started",
           "stage_change",
+          "decision_parameters",
           "message_start",
           "token",
           "message_complete",
@@ -112,9 +117,8 @@ export function useDebateWebSocket(debateId: string | null) {
           "error",
         ] as const;
 
-        cleanups = events.map((event) =>
-          wsManager.on(event as any, handleMessage as any),
-        );
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        cleanups = events.map((event) => wsManager.on(event as any, handleMessage as any));
       })
       .catch(console.error);
 

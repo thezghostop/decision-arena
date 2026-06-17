@@ -31,8 +31,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
   const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
-    userScrolledUp.current =
-      el.scrollHeight - el.scrollTop - el.clientHeight > 120;
+    userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 120;
   }, []);
 
   useEffect(() => {
@@ -59,9 +58,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
       }
     };
     load();
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debateId]);
 
@@ -104,20 +101,13 @@ export function DebateArena({ debateId }: { debateId: string }) {
             </h1>
             {store.debate && (
               <p className="text-sm text-slate-500 mt-1 capitalize">
-                {store.debate.mode.replace(/_/g, " ")} · {store.debate.category}{" "}
-                · {store.debate.status}
+                {store.debate.mode.replace(/_/g, " ")} · {store.debate.category} · {store.debate.status}
               </p>
             )}
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <div
-              className={`flex items-center gap-1.5 text-xs ${isConnected ? "text-green-400" : "text-slate-500"}`}
-            >
-              {isConnected ? (
-                <Wifi className="w-3.5 h-3.5" />
-              ) : (
-                <WifiOff className="w-3.5 h-3.5" />
-              )}
+            <div className={`flex items-center gap-1.5 text-xs ${isConnected ? "text-green-400" : "text-slate-500"}`}>
+              {isConnected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
               {isConnected ? t("debate_arena.live") : t("debate_arena.offline")}
             </div>
             {isComplete && <ExportReport debateId={debateId} />}
@@ -133,6 +123,19 @@ export function DebateArena({ debateId }: { debateId: string }) {
           </div>
         </div>
         <DebateStage current={store.currentStage} />
+        {store.decisionParameters.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-slate-500">{t("debate_arena.parameters_label")}</span>
+            {store.decisionParameters.map((param) => (
+              <span
+                key={param}
+                className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20"
+              >
+                {param}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Main debate layout: messages + sidebar */}
@@ -154,9 +157,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
               <div className="flex items-center justify-center h-48">
                 <div className="text-center space-y-2">
                   <Loader2 className="w-6 h-6 animate-spin text-violet-400 mx-auto" />
-                  <p className="text-slate-500 text-sm">
-                    {t("debate_arena.assembling")}
-                  </p>
+                  <p className="text-slate-500 text-sm">{t("debate_arena.assembling")}</p>
                 </div>
               </div>
             )}
@@ -174,9 +175,7 @@ export function DebateArena({ debateId }: { debateId: string }) {
         <div className="w-full lg:w-72 lg:shrink-0 space-y-4">
           {store.debate && store.debate.panel.length > 0 && (
             <div className="glass rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-white mb-3">
-                {t("debate_arena.expert_panel")}
-              </h3>
+              <h3 className="text-sm font-semibold text-white mb-3">{t("debate_arena.expert_panel")}</h3>
               <div className="space-y-2">
                 {store.debate.panel.map((agent) => (
                   <div key={agent.id} className="flex items-start gap-3">
@@ -187,13 +186,9 @@ export function DebateArena({ debateId }: { debateId: string }) {
                       {agent.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-white">
-                        {agent.name}
-                      </p>
+                      <p className="text-sm font-medium text-white">{agent.name}</p>
                       <p className="text-xs text-slate-400">{agent.role}</p>
-                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                        {agent.bias}
-                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{agent.bias}</p>
                     </div>
                   </div>
                 ))}
@@ -216,12 +211,8 @@ export function DebateArena({ debateId }: { debateId: string }) {
                 <div className="absolute inset-0 rounded-full border-2 border-violet-500/10 animate-ping" />
               </div>
               <div className="text-center space-y-1">
-                <p className="text-white font-semibold text-base">
-                  {t("debate_arena.deliberating")}
-                </p>
-                <p className="text-slate-400 text-sm">
-                  {t("debate_arena.synthesising")}
-                </p>
+                <p className="text-white font-semibold text-base">{t("debate_arena.deliberating")}</p>
+                <p className="text-slate-400 text-sm">{t("debate_arena.synthesising")}</p>
               </div>
               {/* Pulsing placeholder bars */}
               <div className="w-full max-w-md space-y-3 mt-2">

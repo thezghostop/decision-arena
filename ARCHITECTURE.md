@@ -24,13 +24,13 @@
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                          CLIENT (Browser)                           │
-│  Next.js 14 App Router · TypeScript · Tailwind · Framer Motion     │
-│  shadcn/ui · Zustand · WebSocket client                             │
+│  Next.js 15 App Router · TypeScript · Tailwind · Framer Motion     │
+│  Zustand · Clerk · Axios · WebSocket client                         │
 └────────────────────────────┬────────────────────────────────────────┘
                              │ HTTPS + WSS
 ┌────────────────────────────▼────────────────────────────────────────┐
 │                       API GATEWAY LAYER                             │
-│          FastAPI (Railway) · Uvicorn · CORS · Rate Limiting         │
+│          FastAPI (Render) · Uvicorn · CORS · Rate Limiting         │
 │          REST endpoints + WebSocket streaming                       │
 └──────┬──────────────────────────┬──────────────────────────────────-┘
        │                          │
@@ -57,10 +57,16 @@
               ┌───────────────────────────┼───────────────────────────┐
               │                           │                           │
 ┌─────────────▼───────┐    ┌──────────────▼──────────┐  ┌────────────▼────────┐
-│   Gemini 2.5 Pro    │    │      Supabase            │  │    Redis Cache      │
-│   (primary LLM)     │    │  PostgreSQL + Realtime   │  │  (debate state)     │
-│   OpenAI fallback   │    │  + Storage + Auth        │  │                     │
+│  Groq / Ollama /    │    │      Supabase            │  │    Redis Cache      │
+│  Gemini / OpenAI    │    │  PostgreSQL + Realtime   │  │  (debate state)     │
+│  (multi-provider)   │    │  + Storage + Auth        │  │                     │
 └─────────────────────┘    └─────────────────────────┘  └─────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│              LOCAL DOCUMENT Q&A (no vectorDB, runs on the API host)  │
+│  Upload → PyMuPDF4LLM (markdown) → heading split → sections/*.txt    │
+│  Question → Llama.cpp (local GGUF) → find section → answer from it   │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -189,6 +195,30 @@ CREATE TABLE verdicts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Documents (local document Q&A — no vectorDB)
+CREATE TABLE documents (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  filename      TEXT NOT NULL,
+  storage_path  TEXT NOT NULL,            -- original uploaded file on disk
+  sections_dir  TEXT NOT NULL,            -- directory of extracted .txt sections
+  status        TEXT DEFAULT 'processing' CHECK (status IN ('processing', 'ready', 'error')),
+  num_sections  INT DEFAULT 0,
+  error_message TEXT,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Document Questions (Q&A history per document)
+CREATE TABLE document_questions (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id       UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  question          TEXT NOT NULL,
+  answer            TEXT NOT NULL,
+  sections_checked  JSONB DEFAULT '[]',
+  created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Shared Reports
 CREATE TABLE shared_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -229,7 +259,7 @@ CREATE POLICY "Users see own debate messages" ON debate_messages
 ### Panel Generation
 ```
 User question → CategoryClassifier → PanelBuilder
-    CategoryClassifier: uses Gemini to classify into [career, business, tech, policy, personal, other]
+    CategoryClassifier: uses LLM to classify into [career, business, tech, policy, personal, other]
     PanelBuilder: maps category + question keywords to 3–5 expert personas
     Each persona has: {id, name, role, system_prompt, bias, communication_style, avatar_seed}
 ```
@@ -302,72 +332,67 @@ HeatmapGenerator:
 
 ---
 
-## 6. DEBATE ORCHESTRATION LOGIC (LangGraph)
+## 6. DEBATE ORCHESTRATION LOGIC (`DebateOrchestrator`, asyncio — not LangGraph in the current implementation)
 
 ```
-State:
-  debate_id: str
-  question: str
-  mode: str
-  panel: list[ExpertAgent]
-  messages: list[Message]
-  current_stage: Stage
-  stage_message_count: dict
-  audience_queue: list[str]
-  scores: dict
-  completed_stages: list[Stage]
+STAGE_ORDER = [opening, cross_examination, closing, verdict]
 
-Graph Nodes:
-  1. initialize_debate
-     - Set up panel, system prompts, stage counter
+State (DebateOrchestrator instance):
+  debate_id, question, mode, panel: list[ExpertAgent]
+  messages: list[dict]
+  agent_contributions: dict[agent_id, str]
+  current_stage: DebateStage
+  audience_queue: asyncio.Queue[str]      # in-debate audience injections
+  decision_parameters: list[str]          # extracted once per run(), see below
+  sequence_counter: int
 
-  2. run_opening_statements
-     - Each expert gives opening (parallel generation, sequential display)
-     - Moderator introduces the question
+run() pipeline:
+  1. extract_decision_parameters(question) via PanelBuilderAgent
+     - Decomposes the question into 3-5 decision-relevant parameters
+       (e.g. "Cost & affordability", "Effectiveness & expected outcomes",
+       "Feasibility & practical execution", "Risks & downsides") so the
+       panel debates the whole decision instead of converging on a single
+       number/detail the question happens to mention.
+     - Emits {"type": "decision_parameters", "parameters": [...]} to the client.
+     - Falls back to a generic 5-parameter set on any LLM/parse failure.
 
-  3. run_cross_examination
-     - Expert A questions Expert B (round-robin, 2 rounds)
-     - Moderator selects the most contentious disagreement to escalate
+  2. For each stage in STAGE_ORDER:
+     - Emit stage_change
+     - _run_stage(stage):
+       - cross_examination: each expert asks one question to the panel
+         member it most disagrees with (round-robin); also instructed to
+         surface any decision parameter the debate hasn't addressed yet.
+       - opening/closing: each expert is assigned a focus_parameter via
+         round-robin over decision_parameters (idx % len(decision_parameters))
+         and argues that dimension specifically, not just "their strongest
+         point" — this round-robin assignment is what fixes single-aspect
+         convergence.
+     - Drain audience_queue: any question injected via inject_audience_question()
+       during this stage is answered by every expert before moving to the
+       next stage. (Previously this drain only ran at a "rebuttals" stage
+       that no longer exists in STAGE_ORDER, so injected questions were
+       silently dropped — fixed by draining after every stage instead.)
 
-  4. run_challenges
-     - FallacyDetector runs on all prior messages
-     - Experts challenge each other's weakest claims
-     - FactChecker tags claims in real time
-
-  5. check_audience_intervention
-     - If audience_queue not empty → inject question
-     - Moderator reformulates for panel
-     - All experts must respond
-
-  6. run_rebuttals
-     - Each expert defends against the strongest challenge to their position
-
-  7. run_closing_statements
-     - Each expert gives a final 2-3 sentence position
-     - No new arguments allowed
-
-  8. generate_verdict
-     - Moderator synthesizes consensus + disagreements
-     - Scorer runs final scoring
-     - HeatmapGenerator produces heatmap_data
-     - Confidence score calculated
-     - Recommended actions generated
-
-  9. finalize
-     - Persist verdict to DB
-     - Generate shareable slug
-     - Trigger report generation
-
-Edges:
-  initialize → opening → cross_examination → challenges
-  challenges → audience_check (conditional) → rebuttals
-  rebuttals → closing → verdict → finalize → END
-
-  audience_check: if queue empty → rebuttals, else → inject → rebuttals
+  3. _run_scoring() — ScorerAgent scores all agents on contributions so far
+  4. _generate_verdict() — ModeratorAgent.synthesize_verdict(), given
+     decision_parameters, is instructed to make consensus/disagreements/
+     risks/opportunities collectively cover more than one parameter
+  5. Emit debate_complete, persist completion to DB
 
 Streaming:
-  Each node streams token-by-token via WebSocket
-  Frontend receives: {type: "token"|"message_complete"|"stage_change"|"score_update"|"fallacy"|"fact_tag"}
+  Frontend receives (WebSocket): {type: "decision_parameters"|"stage_change"|
+  "message_start"|"token"|"message_complete"|"score_update"|"verdict_ready"|
+  "debate_complete"|"audience_injected"|"error"}
+
+Post-completion handoff (same WebSocket connection, no client reconnect):
+  When run() finishes normally, the WS handler in app/api/ws.py cancels the
+  live-debate client reader (_read_client, whose "inject" path fed
+  audience_queue — dead once run() has returned) and hands the still-open
+  socket directly to _qa_mode(), which streams a fresh round of expert
+  responses for every subsequent follow-up question and persists each as a
+  message. This fixes a prior bug where a follow-up sent right after
+  completion, over the same connection, was silently swallowed by the dead
+  in-debate injection path instead of reaching Q&A mode.
 ```
 
 ---
@@ -376,7 +401,7 @@ Streaming:
 
 ```
 decision-arena/
-├── frontend/                          # Next.js 14 App Router
+├── frontend/                          # Next.js 15 App Router
 │   ├── app/
 │   │   ├── layout.tsx                 # Root layout (dark theme, fonts, Clerk)
 │   │   ├── page.tsx                   # Landing page
@@ -389,13 +414,17 @@ decision-arena/
 │   │   │       └── page.tsx           # Live debate view
 │   │   ├── history/
 │   │   │   └── page.tsx               # Past debates
+│   │   ├── documents/
+│   │   │   ├── page.tsx               # Document list + upload
+│   │   │   └── [documentId]/
+│   │   │       └── page.tsx           # Document Q&A view
 │   │   ├── report/
 │   │   │   └── [slug]/page.tsx        # Shareable public report
 │   │   └── api/
 │   │       └── webhooks/
 │   │           └── clerk/route.ts     # Clerk webhook handler
 │   ├── components/
-│   │   ├── ui/                        # shadcn/ui base components
+│   │   ├── ui/                        # Shared UI primitives
 │   │   ├── arena/
 │   │   │   ├── ArenaSetup.tsx         # Question input + panel preview
 │   │   │   ├── DebateStage.tsx        # Stage progress indicator
@@ -407,6 +436,10 @@ decision-arena/
 │   │   │   ├── FinalVerdict.tsx       # Verdict display
 │   │   │   ├── DecisionHeatmap.tsx    # Visual heatmap
 │   │   │   └── ExportReport.tsx       # Export controls
+│   │   ├── documents/
+│   │   │   ├── DocumentUpload.tsx     # Drag-and-drop upload
+│   │   │   ├── DocumentList.tsx       # Status-polling document list
+│   │   │   └── DocumentQA.tsx         # Ask-a-question UI + answer history
 │   │   ├── landing/
 │   │   │   ├── Hero.tsx
 │   │   │   ├── Features.tsx
@@ -420,9 +453,11 @@ decision-arena/
 │   │   ├── api.ts                     # API client functions
 │   │   ├── websocket.ts               # WebSocket manager
 │   │   ├── supabase.ts                # Supabase client
+│   │   ├── i18n.tsx                   # I18nProvider / useI18n (en/hi/kn)
 │   │   └── utils.ts
 │   ├── store/
-│   │   └── debateStore.ts             # Zustand store
+│   │   ├── debateStore.ts             # Zustand store
+│   │   └── documentStore.ts           # Zustand store (document Q&A)
 │   ├── types/
 │   │   └── index.ts                   # All TypeScript types
 │   ├── hooks/
@@ -444,41 +479,45 @@ decision-arena/
 │   │   │
 │   │   ├── api/
 │   │   │   ├── __init__.py
-│   │   │   ├── debates.py             # Debate CRUD endpoints
-│   │   │   ├── panel.py               # Panel generation endpoint
-│   │   │   ├── reports.py             # Report generation + share
+│   │   │   ├── debates.py             # Debate CRUD + classify endpoints
+│   │   │   ├── reviews.py             # User review endpoints
+│   │   │   ├── settings.py            # LLM provider settings endpoint
+│   │   │   ├── reports.py             # Report generation + PDF download
+│   │   │   ├── documents.py           # Document Q&A endpoints (upload/ask/list/delete)
 │   │   │   └── ws.py                  # WebSocket debate stream
 │   │   │
 │   │   ├── agents/
 │   │   │   ├── __init__.py
-│   │   │   ├── base.py                # BaseAgent class
+│   │   │   ├── base.py                # BaseAgent abstract class
 │   │   │   ├── expert.py              # ExpertAgent implementation
-│   │   │   ├── moderator.py           # ModeratorAgent
+│   │   │   ├── moderator.py           # ModeratorAgent (final verdict)
 │   │   │   ├── fallacy_detector.py    # FallacyDetectorAgent
 │   │   │   ├── fact_checker.py        # FactCheckerAgent
 │   │   │   ├── scorer.py              # ScorerAgent
-│   │   │   ├── heatmap.py             # HeatmapGeneratorAgent
 │   │   │   └── panel_builder.py       # PanelBuilder (dynamic persona generation)
 │   │   │
 │   │   ├── engine/
 │   │   │   ├── __init__.py
-│   │   │   ├── debate_graph.py        # LangGraph state machine
-│   │   │   ├── state.py               # DebateState TypedDict
-│   │   │   ├── stages.py              # Stage node functions
-│   │   │   └── orchestrator.py        # Debate orchestrator (runs graph + streams)
+│   │   │   ├── state.py               # DebateState dataclass
+│   │   │   └── orchestrator.py        # DebateOrchestrator (asyncio queue + streaming)
 │   │   │
 │   │   ├── models/
 │   │   │   ├── __init__.py
-│   │   │   ├── debate.py              # Pydantic models
-│   │   │   ├── message.py
-│   │   │   ├── agent.py
-│   │   │   └── verdict.py
+│   │   │   ├── debate.py              # Debate, CreateDebatePayload, LLMUserConfig
+│   │   │   ├── message.py             # DebateMessage, MessageType
+│   │   │   ├── verdict.py             # Verdict, AgentScore, HeatmapData
+│   │   │   └── document.py            # DocumentResponse, AskDocumentRequest/Response
 │   │   │
 │   │   └── services/
 │   │       ├── __init__.py
-│   │       ├── llm.py                 # LLM abstraction (Gemini/OpenAI)
-│   │       ├── report_generator.py    # PDF/exec summary generation
-│   │       └── cache.py               # Redis cache service
+│   │       ├── llm.py                 # LLMService (Groq/Ollama/Gemini/OpenAI + fallback chain)
+│   │       ├── report_generator.py    # PDF generation via ReportLab
+│   │       └── document_qa/           # Local document Q&A (no vectorDB)
+│   │           ├── __init__.py
+│   │           ├── config.py          # FIND_PROMPT / ANSWER_PROMPT
+│   │           ├── preprocessing.py   # PyMuPDF4LLM extraction + heading-based section split
+│   │           ├── model_loader.py    # Llama.cpp GGUF loading + process-wide cache
+│   │           └── workflow.py        # find -> retrieve -> answer loop (rapidfuzz section match)
 │   │
 │   ├── tests/
 │   │   ├── test_debate_engine.py
@@ -486,12 +525,13 @@ decision-arena/
 │   │   └── test_api.py
 │   ├── .env.example
 │   ├── requirements.txt
-│   ├── Procfile                       # Railway deployment
-│   └── railway.json
+│   └── Procfile                       # Render deployment
 │
 ├── supabase/
 │   ├── migrations/
-│   │   └── 001_initial_schema.sql
+│   │   ├── 001_initial_schema.sql
+│   │   ├── 002_reviews.sql
+│   │   └── 003_documents.sql
 │   └── seed.sql
 │
 ├── .github/
@@ -527,6 +567,13 @@ POST   /api/v1/reports/{debate_id}      # Generate report
 GET    /api/v1/reports/share/{slug}     # Get public shared report
 POST   /api/v1/reports/{debate_id}/share # Create share link
 
+POST   /api/v1/documents/upload         # Upload a document (multipart/form-data)
+GET    /api/v1/documents/               # List user's documents
+GET    /api/v1/documents/{id}           # Get one document's status
+POST   /api/v1/documents/{id}/ask       # Ask a question (local find -> retrieve -> answer)
+GET    /api/v1/documents/{id}/questions # Q&A history for a document
+DELETE /api/v1/documents/{id}           # Delete document + sections + history
+
 GET    /health                          # Health check
 ```
 
@@ -541,6 +588,7 @@ Client → Server:
   {"type": "ping"}
 
 Server → Client:
+  {"type": "decision_parameters", "parameters": ["Cost & affordability", "Effectiveness & expected outcomes", ...]}
   {"type": "stage_change", "stage": "cross_examination", "title": "Cross-Examination"}
   {"type": "message_start", "agent_id": "...", "agent_name": "...", "stage": "..."}
   {"type": "token", "content": "..."}
@@ -663,13 +711,13 @@ Server → Client:
 }
 ```
 
-### Backend (Railway)
+### Backend (Render)
 ```
-railway.json specifies:
+Render Web Service:
   - Build: pip install -r requirements.txt
   - Start: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 4
   - Health check: GET /health
-  - Environment variables injected via Railway dashboard
+  - Environment variables injected via Render dashboard
 ```
 
 ### Database (Supabase)
@@ -678,7 +726,7 @@ railway.json specifies:
 2. Run migrations/001_initial_schema.sql
 3. Enable Realtime on debate_messages table
 4. Configure RLS policies
-5. Copy connection strings to Railway env
+5. Copy connection strings to Render env
 ```
 
 ### CI/CD
@@ -686,7 +734,7 @@ railway.json specifies:
 GitHub Actions:
   On PR → frontend-ci.yml: lint + type-check + build
   On PR → backend-ci.yml: pytest + flake8
-  On merge to main → auto-deploy to Vercel + Railway
+  On merge to main → auto-deploy to Vercel + Render
 ```
 
 ---
@@ -694,15 +742,15 @@ GitHub Actions:
 ## 11. SCALING STRATEGY
 
 ### Phase 1 (Hackathon / MVP)
-- Single Railway instance (2 vCPU, 512MB RAM)
+- Single Render instance (2 vCPU, 512MB RAM)
 - Supabase free tier
 - Vercel hobby
 - No Redis (in-memory state)
-- Gemini 2.5 Pro with rate limiting
+- Groq llama-3.1-8b-instant (primary LLM) with rate limiting
 
 ### Phase 2 (Launch / Beta)
-- Railway Pro (autoscale, multiple workers)
-- Redis for debate state (Railway Redis addon)
+- Render Pro (autoscale, multiple workers)
+- Redis for debate state (Render Redis addon)
 - Supabase Pro (connection pooling via pgBouncer)
 - CDN for report PDFs (Supabase Storage)
 - Vercel Pro
@@ -747,7 +795,83 @@ GitHub Actions:
 - Fallacy detection as a first-class feature
 - Multi-modal output: scoreboard + heatmap + exportable report
 - 4 distinct modes (Standard, Boardroom, Shark Tank, Policy)
-- Built in under 48 hours on Gemini 2.5 Pro
+- Built in under 48 hours using Groq (llama-3.1-8b-instant) as the primary LLM
+
+---
+
+## 13. LOCAL DOCUMENT Q&A (NO-VECTORDB RAG)
+
+Modeled directly on the Mozilla.ai ["structured-qa" Blueprint](https://blueprints.mozilla.ai/all-blueprints/query-structured-documents-using-a-lightweight-llm-workflow).
+Integrated as a feature inside the existing FastAPI backend (not a standalone tool)
+and exposed through the existing Render/Vercel deployment — no separate service.
+
+### Why no vectorDB
+
+Traditional RAG embeds chunks and does similarity search. This pipeline skips
+embeddings entirely: documents are split into named sections by heading, and
+the LLM itself picks which section is relevant, then answers strictly from
+that section's text. Simpler infra, no embedding model, no vector store — at
+the cost of being best suited to documents with clear heading structure
+(specs, manuals, policies, FAQs) rather than dense unstructured prose.
+
+### Pipeline
+
+```
+Upload                         Ask
+──────                         ───
+file (.pdf/.docx/.txt/.md/      question
+.pptx/.xlsx, ≤25MB)                │
+   │                               ▼
+   ▼                         get_or_load_model()
+PyMuPDF4LLM.to_markdown()    (Llama.cpp GGUF, cached
+   │                          in-process after first load)
+   ▼                               │
+split_markdown_by_headings()       ▼
+   │                         find_retrieve_answer():
+   ▼                           1. ask model: which section_name
+sections/<name>.txt × N             best matches the question?
+(+ _full_text.md for debug)       2. rapidfuzz-match model's reply
+   │                                 to the real section names
+   ▼                              3. read that section's .txt,
+status: ready (or error)             ask model to answer from it
+                                   4. if model replies "need more
+                                      info", drop that section and
+                                      retry (up to max_sections)
+                                   5. otherwise return the answer
+                                      + list of sections_checked
+```
+
+### Components (`backend/app/services/document_qa/`)
+
+| File | Responsibility |
+|------|-----------------|
+| `preprocessing.py` | `document_to_sections_dir()` — PyMuPDF4LLM extraction + `split_markdown_by_headings()` (regex on `#`/`##`/`###`/`####` and bold-numbered headings) |
+| `model_loader.py` | `get_or_load_model()` — loads a GGUF model via `llama_cpp.Llama.from_pretrained`, process-wide cache keyed by `model_id`, auto-detects GPU via `nvidia-smi` |
+| `workflow.py` | `find_retrieve_answer()` — the find→retrieve→answer loop; `get_matching_section()` does the rapidfuzz fuzzy match |
+| `config.py` | `FIND_PROMPT` / `ANSWER_PROMPT` templates, validated to contain their required placeholders |
+
+### Default model
+
+`bartowski/Qwen2.5-7B-Instruct-GGUF/Qwen2.5-7B-Instruct-Q8_0.gguf` (the
+Blueprint's default 7B model) — downloaded once to `~/.cache/huggingface` on
+first request, then served from the in-memory cache. Configurable via
+`DOCUMENT_QA_MODEL`. CPU inference works but is slow; a GPU is used
+automatically when `nvidia-smi` succeeds.
+
+### Data model
+
+`documents` (status: processing/ready/error, storage_path, sections_dir,
+num_sections) and `document_questions` (per-document Q&A history with
+`sections_checked`) — see migration `003_documents.sql` and the schema in
+section 4 above. Authorization follows the same per-user ownership check
+pattern as debates (`_get_and_authorize_document` in `api/documents.py`).
+
+### Frontend
+
+`/documents` (upload + status-polling list) and `/documents/{id}` (ask
+questions, see answer history with which sections were checked) — both
+behind the existing Clerk auth, reachable from the navbar (`nav.documents`,
+localized EN/HI/KN).
 
 ---
 
@@ -759,8 +883,8 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
 NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-NEXT_PUBLIC_API_URL=https://your-backend.railway.app
-NEXT_PUBLIC_WS_URL=wss://your-backend.railway.app
+NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
+NEXT_PUBLIC_WS_URL=wss://your-backend.onrender.com
 ```
 
 ### Backend (.env)
@@ -776,4 +900,9 @@ ALLOWED_ORIGINS=https://your-frontend.vercel.app
 DEBUG=false
 MAX_DEBATE_AGENTS=6
 FREE_TIER_DAILY_LIMIT=3
+
+# Local document Q&A (no API key — runs on this host via llama-cpp-python)
+DOCUMENT_QA_MODEL=bartowski/Qwen2.5-7B-Instruct-GGUF/Qwen2.5-7B-Instruct-Q8_0.gguf
+DOCUMENT_QA_MAX_SECTIONS=20
+DOCUMENT_QA_STORAGE_DIR=./document_qa_storage
 ```

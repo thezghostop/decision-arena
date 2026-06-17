@@ -5,7 +5,8 @@
     "getStarted": "Get Started",
     "enterArena": "Enter Arena",
     "newDebate": "New Debate",
-    "history": "History"
+    "history": "History",
+    "documents": "Documents"
   },
   "hero": {
     "badge": "Powered by Groq",
@@ -104,7 +105,8 @@
     "assembling": "Panel assembling…",
     "expert_panel": "Expert Panel",
     "deliberating": "Deliberating…",
-    "synthesising": "The panel is synthesising the final verdict"
+    "synthesising": "The panel is synthesising the final verdict",
+    "parameters_label": "Debating:"
   },
   "export": {
     "button": "Export PDF",

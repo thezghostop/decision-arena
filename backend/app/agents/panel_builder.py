@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import logging
-
 from app.agents.base import BaseAgent
 from app.models.debate import AgentConfig, DebateCategory, DebateMode
 
@@ -175,11 +174,12 @@ MODE_OVERRIDES: dict[str, list[str]] = {
 class PanelBuilderAgent(BaseAgent):
     """Dynamically builds an expert panel for a given question."""
 
-    def __init__(self) -> None:
+    def __init__(self, llm_service=None) -> None:
         super().__init__(
             agent_id="panel_builder",
             name="Panel Builder",
             role="Orchestrator",
+            llm_service=llm_service,
         )
         self._library_map = {e.id: e for e in EXPERT_LIBRARY}
 
@@ -214,7 +214,7 @@ class PanelBuilderAgent(BaseAgent):
                 f"Default suggestions: {defaults}\n\n"
                 "Pick exactly 4 expert IDs that would create the most insightful, "
                 "diverse, and adversarial debate for this specific question.\n"
-                'Return ONLY: {"panel": ["id1", "id2", "id3", "id4"]}'
+                "Return ONLY: {\"panel\": [\"id1\", \"id2\", \"id3\", \"id4\"]}"
             )
             raw = await self.generate(prompt, temperature=0.4)
             start = raw.find("{")
@@ -229,13 +229,54 @@ class PanelBuilderAgent(BaseAgent):
             logger.warning("LLM panel selection failed (%s), using defaults.", exc)
             return [self._library_map[i] for i in defaults if i in self._library_map]
 
+    async def extract_decision_parameters(self, question: str) -> list[str]:
+        """
+        Decompose the question into 3-5 distinct decision-relevant parameters
+        so the panel debates the whole decision, not just the one number or
+        detail the user happened to mention (e.g. a price).
+
+        Returns a list of short parameter labels (e.g. "Pricing & affordability",
+        "Effectiveness vs. free alternatives", "Operational feasibility").
+        Falls back to a generic, still-multi-aspect set on any failure.
+        """
+        fallback = [
+            "Cost & affordability",
+            "Effectiveness & expected outcomes",
+            "Feasibility & practical execution",
+            "Risks & downsides",
+            "Alternatives & opportunity cost",
+        ]
+        try:
+            prompt = (
+                f"Decision question: '{question}'\n\n"
+                "Identify the 3 to 5 most decision-relevant parameters/dimensions "
+                "someone would need to weigh to properly evaluate this decision. "
+                "Do NOT fixate on a single number or detail mentioned in the question "
+                "(e.g. a price) — surface the full range of what actually matters: "
+                "things like cost, effectiveness/outcomes vs. alternatives, feasibility, "
+                "risk, equity/access, long-term sustainability, etc., whichever are "
+                "genuinely relevant to THIS question.\n\n"
+                "Return ONLY: {\"parameters\": [\"short label 1\", \"short label 2\", \"short label 3\"]}"
+            )
+            raw = await self.generate(prompt, temperature=0.3)
+            start = raw.find("{")
+            end = raw.rfind("}") + 1
+            data = json.loads(raw[start:end])
+            params = [str(p).strip() for p in data.get("parameters", []) if str(p).strip()]
+            if len(params) < 2:
+                raise ValueError("Too few parameters returned")
+            return params[:5]
+        except Exception as exc:
+            logger.warning("Decision parameter extraction failed (%s), using fallback.", exc)
+            return fallback
+
     async def classify_question(self, question: str) -> tuple[DebateCategory, float]:
         """Classify a question into a category. Returns (category, confidence)."""
         prompt = (
             f"Classify this decision question into exactly ONE category.\n"
             f"Question: '{question}'\n"
             f"Categories: career, business, tech, policy, personal, other\n\n"
-            'Return ONLY: {"category": "business", "confidence": 0.87}'
+            "Return ONLY: {\"category\": \"business\", \"confidence\": 0.87}"
         )
         try:
             raw = await self.generate(prompt, temperature=0.1)

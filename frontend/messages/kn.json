@@ -5,7 +5,8 @@
     "getStarted": "ಪ್ರಾರಂಭಿಸಿ",
     "enterArena": "ಅರೆನಾ ಪ್ರವೇಶಿಸಿ",
     "newDebate": "ಹೊಸ ಚರ್ಚೆ",
-    "history": "ಇತಿಹಾಸ"
+    "history": "ಇತಿಹಾಸ",
+    "documents": "ದಾಖಲೆಗಳು"
   },
   "hero": {
     "badge": "Groq ನಿಂದ ಚಾಲಿತ",
@@ -104,7 +105,8 @@
     "assembling": "ಸಮಿತಿ ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ…",
     "expert_panel": "ತಜ್ಞ ಸಮಿತಿ",
     "deliberating": "ವಿಚಾರ-ವಿಮರ್ಶೆ ನಡೆಯುತ್ತಿದೆ…",
-    "synthesising": "ಸಮಿತಿ ಅಂತಿಮ ತೀರ್ಪು ಸಿದ್ಧಪಡಿಸುತ್ತಿದೆ"
+    "synthesising": "ಸಮಿತಿ ಅಂತಿಮ ತೀರ್ಪು ಸಿದ್ಧಪಡಿಸುತ್ತಿದೆ",
+    "parameters_label": "ಚರ್ಚೆಯ ವಿಷಯಗಳು:"
   },
   "export": {
     "button": "PDF ರಫ್ತು ಮಾಡಿ",

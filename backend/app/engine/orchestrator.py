@@ -10,17 +10,17 @@ import json
 import logging
 import uuid
 from collections import defaultdict
-from collections.abc import AsyncIterator, Callable
-from datetime import UTC
+from typing import AsyncIterator, Callable, Optional
 
 from app.agents.expert import ExpertAgent
-from app.agents.fact_checker import FactCheckerAgent
-from app.agents.fallacy_detector import FallacyDetectorAgent
 from app.agents.moderator import ModeratorAgent
+from app.agents.panel_builder import PanelBuilderAgent
+from app.agents.fallacy_detector import FallacyDetectorAgent
+from app.agents.fact_checker import FactCheckerAgent
 from app.agents.scorer import ScorerAgent
-from app.database import DatabaseService
 from app.models.debate import AgentConfig, DebateStage, LLMProviderConfig
 from app.models.message import MessageType
+from app.database import DatabaseService
 from app.services.llm import LLMService, LLMUserConfig, create_llm_service
 
 logger = logging.getLogger(__name__)
@@ -48,9 +48,9 @@ class DebateOrchestrator:
         mode: str,
         panel: list[AgentConfig],
         on_event: Callable[[WSEvent], None],
-        db_service: DatabaseService | None = None,
+        db_service: Optional[DatabaseService] = None,
         language: str = "en",
-        llm_config: LLMProviderConfig | None = None,
+        llm_config: Optional[LLMProviderConfig] = None,
     ) -> None:
         self.debate_id = debate_id
         self.question = question
@@ -61,21 +61,18 @@ class DebateOrchestrator:
         self.language = language
 
         # Build a per-debate LLM service from the user's provider choice
-        user_cfg = (
-            LLMUserConfig(
-                provider=llm_config.provider,
-                api_key=llm_config.api_key,
-                ollama_base_url=llm_config.ollama_base_url,
-                ollama_model=llm_config.ollama_model,
-                groq_model=llm_config.groq_model,
-            )
-            if llm_config
-            else None
-        )
+        user_cfg = LLMUserConfig(
+            provider=llm_config.provider,
+            api_key=llm_config.api_key,
+            ollama_base_url=llm_config.ollama_base_url,
+            ollama_model=llm_config.ollama_model,
+            groq_model=llm_config.groq_model,
+        ) if llm_config else None
         llm_svc: LLMService = create_llm_service(user_cfg)
 
         self.experts = {cfg.id: ExpertAgent(cfg, language=language, llm_service=llm_svc) for cfg in panel}
         self.moderator = ModeratorAgent(language=language, llm_service=llm_svc)
+        self.panel_builder = PanelBuilderAgent(llm_service=llm_svc)
         self.fallacy_detector = FallacyDetectorAgent()
         self.fact_checker = FactCheckerAgent()
         self.scorer = ScorerAgent()
@@ -85,6 +82,7 @@ class DebateOrchestrator:
         self.audience_queue: asyncio.Queue[str] = asyncio.Queue()
         self.current_stage: DebateStage = DebateStage.opening
         self.sequence_counter = 0
+        self.decision_parameters: list[str] = []
         self._stopped = False
 
     def inject_audience_question(self, question: str) -> None:
@@ -97,27 +95,39 @@ class DebateOrchestrator:
     async def run(self) -> None:
         """Run the full debate pipeline."""
         try:
+            # Decompose the question into multiple decision-relevant parameters so the
+            # panel debates the whole decision, not just one number/detail it mentions.
+            try:
+                self.decision_parameters = await self.panel_builder.extract_decision_parameters(
+                    self.question
+                )
+            except Exception as exc:
+                logger.warning("Decision parameter extraction failed: %s", exc)
+                self.decision_parameters = []
+
+            if self.decision_parameters:
+                self._emit("decision_parameters", {"parameters": self.decision_parameters})
+
             for stage in STAGE_ORDER:
                 if self._stopped:
                     break
                 self.current_stage = stage
 
                 # Announce stage change
-                self._emit(
-                    "stage_change",
-                    {
-                        "stage": stage.value,
-                        "title": self._stage_title(stage),
-                        "description": "",
-                    },
-                )
-
-                # Check for audience injection before rebuttals
-                if stage == DebateStage.rebuttals and not self.audience_queue.empty():
-                    audience_q = await self.audience_queue.get()
-                    await self._run_audience_intervention(audience_q)
+                self._emit("stage_change", {
+                    "stage": stage.value,
+                    "title": self._stage_title(stage),
+                    "description": "",
+                })
 
                 await self._run_stage(stage)
+
+                # Drain any audience questions injected during this stage — previously
+                # this only checked a "rebuttals" stage that no longer exists in
+                # STAGE_ORDER, so injected questions were silently dropped.
+                while not self._stopped and not self.audience_queue.empty():
+                    audience_q = await self.audience_queue.get()
+                    await self._run_audience_intervention(audience_q)
 
             if not self._stopped:
                 await self._run_scoring()
@@ -136,18 +146,29 @@ class DebateOrchestrator:
         if stage == DebateStage.cross_examination:
             await self._run_cross_examination()
         else:
-            for agent_cfg in self.panel:
+            for idx, agent_cfg in enumerate(self.panel):
                 if self._stopped:
                     return
                 expert = self.experts[agent_cfg.id]
                 msg_id = str(uuid.uuid4())
                 self._emit_message_start(msg_id, agent_cfg, stage, MessageType.argument)
 
+                # Spread experts across the decision parameters (round-robin) so the
+                # panel collectively covers multiple aspects instead of converging on
+                # whichever single detail the question happened to mention.
+                focus_parameter = (
+                    self.decision_parameters[idx % len(self.decision_parameters)]
+                    if self.decision_parameters
+                    else None
+                )
+
                 full_content = ""
                 async for token in expert.speak(
                     stage=stage,
                     question=self.question,
                     context=self._build_context(max_chars=1200),
+                    focus_parameter=focus_parameter,
+                    decision_parameters=self.decision_parameters or None,
                 ):
                     if self._stopped:
                         return
@@ -170,6 +191,7 @@ class DebateOrchestrator:
                 stage=DebateStage.cross_examination,
                 question=self.question,
                 context=self._build_context(max_chars=800),
+                decision_parameters=self.decision_parameters or None,
             ):
                 if self._stopped:
                     return
@@ -187,7 +209,9 @@ class DebateOrchestrator:
         mod_id = str(uuid.uuid4())
         self._emit_moderator_start(mod_id)
         full_mod = ""
-        async for token in self.moderator.introduce_audience_question(self.question, audience_question, panel_names):
+        async for token in self.moderator.introduce_audience_question(
+            self.question, audience_question, panel_names
+        ):
             self._emit("token", {"messageId": mod_id, "content": token})
             full_mod += token
         self._finalize_moderator(mod_id, full_mod, DebateStage.audience_intervention)
@@ -200,7 +224,9 @@ class DebateOrchestrator:
                 return
             expert = self.experts[agent_cfg.id]
             msg_id = str(uuid.uuid4())
-            self._emit_message_start(msg_id, agent_cfg, DebateStage.audience_intervention, MessageType.argument)
+            self._emit_message_start(
+                msg_id, agent_cfg, DebateStage.audience_intervention, MessageType.argument
+            )
             full_content = ""
             async for token in expert.speak(
                 stage=DebateStage.audience_intervention,
@@ -233,20 +259,20 @@ class DebateOrchestrator:
 
     async def _generate_verdict(self) -> None:
         """Generate and emit the final verdict."""
-        self._emit(
-            "stage_change",
-            {
-                "stage": "verdict",
-                "title": "The Verdict",
-                "description": "Synthesizing the debate outcome…",
-            },
-        )
+        self._emit("stage_change", {
+            "stage": "verdict",
+            "title": "The Verdict",
+            "description": "Synthesizing the debate outcome…",
+        })
 
         debate_summary = "\n\n".join(
-            f"[{mid['agent_name']} — {mid['stage']}]: {mid['content'][:400]}" for mid in self.messages
+            f"[{mid['agent_name']} — {mid['stage']}]: {mid['content'][:400]}"
+            for mid in self.messages
         )
 
-        raw_verdict = await self.moderator.synthesize_verdict(self.question, debate_summary)
+        raw_verdict = await self.moderator.synthesize_verdict(
+            self.question, debate_summary, decision_parameters=self.decision_parameters or None
+        )
 
         try:
             start = raw_verdict.find("{")
@@ -292,14 +318,11 @@ class DebateOrchestrator:
         fallacies_dicts: list = []
         fact_tags_dicts: list = []
 
-        self._emit(
-            "message_complete",
-            {
-                "messageId": msg_id,
-                "fallacies": fallacies_dicts,
-                "factTags": fact_tags_dicts,
-            },
-        )
+        self._emit("message_complete", {
+            "messageId": msg_id,
+            "fallacies": fallacies_dicts,
+            "factTags": fact_tags_dicts,
+        })
 
         # Store in memory
         msg = {
@@ -332,20 +355,17 @@ class DebateOrchestrator:
         stage: DebateStage,
         message_type: MessageType,
     ) -> None:
-        self._emit(
-            "message_start",
-            {
-                "messageId": msg_id,
-                "agentId": agent_cfg.id,
-                "agentName": agent_cfg.name,
-                "agentRole": agent_cfg.role,
-                "agentIcon": agent_cfg.icon,
-                "agentColor": agent_cfg.color,
-                "stage": stage.value,
-                "messageType": message_type.value,
-                "sequenceNum": self.sequence_counter + 1,
-            },
-        )
+        self._emit("message_start", {
+            "messageId": msg_id,
+            "agentId": agent_cfg.id,
+            "agentName": agent_cfg.name,
+            "agentRole": agent_cfg.role,
+            "agentIcon": agent_cfg.icon,
+            "agentColor": agent_cfg.color,
+            "stage": stage.value,
+            "messageType": message_type.value,
+            "sequenceNum": self.sequence_counter + 1,
+        })
 
     async def _stream_moderator(
         self,
@@ -363,20 +383,17 @@ class DebateOrchestrator:
         self._finalize_moderator(msg_id, full_content, stage)
 
     def _emit_moderator_start(self, msg_id: str) -> None:
-        self._emit(
-            "message_start",
-            {
-                "messageId": msg_id,
-                "agentId": "moderator",
-                "agentName": "Moderator",
-                "agentRole": "Debate Moderator",
-                "agentIcon": "⚖️",
-                "agentColor": "#94A3B8",
-                "stage": self.current_stage.value,
-                "messageType": "moderation",
-                "sequenceNum": self.sequence_counter + 1,
-            },
-        )
+        self._emit("message_start", {
+            "messageId": msg_id,
+            "agentId": "moderator",
+            "agentName": "Moderator",
+            "agentRole": "Debate Moderator",
+            "agentIcon": "⚖️",
+            "agentColor": "#94A3B8",
+            "stage": self.current_stage.value,
+            "messageType": "moderation",
+            "sequenceNum": self.sequence_counter + 1,
+        })
 
     def _finalize_moderator(self, msg_id: str, content: str, stage: DebateStage) -> None:
         self._emit("message_complete", {"messageId": msg_id, "fallacies": [], "factTags": []})
@@ -401,7 +418,10 @@ class DebateOrchestrator:
     def _build_context(self, max_chars: int = 2000) -> str:
         """Build a truncated context string from recent messages."""
         recent = self.messages[-12:]  # Last 12 messages
-        lines = [f"[{m['agent_name']} — {m['stage']}]: {m['content'][:200]}" for m in recent]
+        lines = [
+            f"[{m['agent_name']} — {m['stage']}]: {m['content'][:200]}"
+            for m in recent
+        ]
         full = "\n".join(lines)
         return full[-max_chars:] if len(full) > max_chars else full
 
@@ -430,6 +450,5 @@ class DebateOrchestrator:
 
     @staticmethod
     def _now_iso() -> str:
-        from datetime import datetime
-
-        return datetime.now(UTC).isoformat()
+        from datetime import datetime, timezone
+        return datetime.now(timezone.utc).isoformat()

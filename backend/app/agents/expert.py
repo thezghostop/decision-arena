@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-
+from typing import AsyncIterator, Optional
 from app.agents.base import BaseAgent
 from app.models.debate import AgentConfig, DebateStage
 
+
 STAGE_INSTRUCTIONS: dict[str, str] = {
     "opening": (
-        "Give ONE punchy paragraph (60–80 words) stating your core position. "
-        "Be decisive. Lead with your strongest point."
+        "Give ONE punchy paragraph (60–80 words) stating your position on YOUR ASSIGNED FOCUS "
+        "PARAMETER below. Be decisive. Do not default to whichever single number or detail the "
+        "question happens to mention (e.g. a price) — argue your assigned dimension specifically."
     ),
     "cross_examination": (
         "Ask ONE sharp question (2–3 sentences) to the expert whose view most conflicts with yours. "
-        "Address them by name. Expose a specific gap or contradiction."
+        "Address them by name. Expose a specific gap or contradiction. If you notice the panel has "
+        "ignored one of the listed decision parameters so far, raise a question about it now."
     ),
     "challenges": (
         "In 2–3 sentences, challenge the weakest argument made so far. "
@@ -27,7 +29,10 @@ STAGE_INSTRUCTIONS: dict[str, str] = {
         "In 3–4 sentences, defend your position against the strongest challenge. "
         "Acknowledge any valid point, then explain why your overall stance still holds."
     ),
-    "closing": ("2 sentences max. What is the single most important thing the decision-maker must know?"),
+    "closing": (
+        "2 sentences max. Tie your view back to your assigned focus parameter — what is the single "
+        "most important thing the decision-maker must know about that dimension?"
+    ),
 }
 
 LANGUAGE_INSTRUCTIONS: dict[str, str] = {
@@ -82,7 +87,9 @@ class ExpertAgent(BaseAgent):
         stage: DebateStage,
         question: str,
         context: str,
-        audience_question: str | None = None,
+        audience_question: Optional[str] = None,
+        focus_parameter: Optional[str] = None,
+        decision_parameters: Optional[list[str]] = None,
     ) -> AsyncIterator[str]:
         """Stream the expert's contribution for the given stage."""
         stage_instruction = STAGE_INSTRUCTIONS.get(stage.value, STAGE_INSTRUCTIONS["opening"])
@@ -91,6 +98,15 @@ class ExpertAgent(BaseAgent):
             f"DECISION UNDER DEBATE: {question}\n\n"
             f"DEBATE CONTEXT (previous statements):\n{context or 'No previous statements yet.'}\n\n"
         )
+
+        if decision_parameters:
+            prompt += (
+                "DECISION PARAMETERS THE PANEL MUST COLLECTIVELY COVER (not just one of these): "
+                f"{', '.join(decision_parameters)}\n\n"
+            )
+
+        if focus_parameter:
+            prompt += f"YOUR ASSIGNED FOCUS PARAMETER FOR THIS TURN: {focus_parameter}\n\n"
 
         if audience_question:
             prompt += f"AUDIENCE QUESTION TO ADDRESS: {audience_question}\n\n"
