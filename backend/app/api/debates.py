@@ -2,26 +2,25 @@
 
 from __future__ import annotations
 
-import logging
 import uuid
-from datetime import UTC
+import logging
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-
-from app.agents.panel_builder import PanelBuilderAgent
 from app.auth import get_current_user
 from app.database import DatabaseService
+from app.agents.panel_builder import PanelBuilderAgent, EXPERT_LIBRARY
 from app.models.debate import (
+    AgentConfig,
     ClassifyRequest,
     ClassifyResponse,
     CreateDebateRequest,
     CreateDebateResponse,
     DebateResponse,
-    DebateStage,
-    DebateStatus,
+    StartDebateResponse,
     InjectQuestionRequest,
     InjectQuestionResponse,
-    StartDebateResponse,
+    DebateStatus,
+    DebateStage,
 )
 from app.models.message import DebateMessageResponse
 from app.models.verdict import AgentScoreResponse
@@ -37,6 +36,17 @@ def get_active_debates() -> dict:
     return _active_debates
 
 
+@router.get("/experts", response_model=list[AgentConfig])
+async def list_experts() -> list[AgentConfig]:
+    """Return the full curated expert library. No auth required.
+
+    Lets the frontend render a selectable catalog for manual panel editing
+    (swapping an AI-suggested expert for another curated persona) without
+    duplicating the persona definitions in the frontend.
+    """
+    return EXPERT_LIBRARY
+
+
 @router.post("/classify", response_model=ClassifyResponse)
 async def classify_question(payload: ClassifyRequest) -> ClassifyResponse:
     """Classify question and suggest expert panel. No auth required."""
@@ -44,7 +54,6 @@ async def classify_question(payload: ClassifyRequest) -> ClassifyResponse:
     mode = payload.mode or "standard"
 
     from app.models.debate import DebateMode
-
     mode_enum = DebateMode(mode) if isinstance(mode, str) else mode
 
     category, confidence = await panel_builder.classify_question(payload.question)
@@ -175,7 +184,6 @@ async def get_scores(
 
 # ── Private Helpers ───────────────────────────────────────────────────────────
 
-
 async def _get_and_authorize_debate(db: DatabaseService, debate_id: str, user: dict) -> dict:
     debate = await db.get_debate(debate_id)
     if not debate:
@@ -188,9 +196,8 @@ async def _get_and_authorize_debate(db: DatabaseService, debate_id: str, user: d
 
 
 async def _count_todays_debates(db: DatabaseService, user_id: str) -> int:
-    from datetime import datetime
-
-    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    from datetime import datetime, timezone, timedelta
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
     result = (
         db.db.table("debates")
         .select("id", count="exact")
@@ -202,10 +209,8 @@ async def _count_todays_debates(db: DatabaseService, user_id: str) -> int:
 
 
 def _map_debate(d: dict) -> DebateResponse:
-    from datetime import datetime
-
     from app.models.debate import AgentConfig
-
+    from datetime import datetime
     return DebateResponse(
         id=d["id"],
         user_id=d["user_id"],
@@ -216,16 +221,13 @@ def _map_debate(d: dict) -> DebateResponse:
         panel=[AgentConfig(**p) if isinstance(p, dict) else p for p in d.get("panel", [])],
         current_stage=d.get("current_stage", "opening"),
         audience_questions=d.get("audience_questions", []),
-        created_at=d["created_at"]
-        if isinstance(d["created_at"], datetime)
-        else datetime.fromisoformat(d["created_at"]),
+        created_at=d["created_at"] if isinstance(d["created_at"], datetime) else datetime.fromisoformat(d["created_at"]),
         completed_at=d.get("completed_at"),
     )
 
 
 def _map_message(m: dict) -> DebateMessageResponse:
     from datetime import datetime
-
     return DebateMessageResponse(
         id=m["id"],
         debate_id=m["debate_id"],
@@ -238,9 +240,7 @@ def _map_message(m: dict) -> DebateMessageResponse:
         fallacies=m.get("fallacies", []),
         fact_tags=m.get("fact_tags", []),
         sequence_num=m.get("sequence_num", 0),
-        created_at=m["created_at"]
-        if isinstance(m["created_at"], datetime)
-        else datetime.fromisoformat(m["created_at"]),
+        created_at=m["created_at"] if isinstance(m["created_at"], datetime) else datetime.fromisoformat(m["created_at"]),
     )
 
 

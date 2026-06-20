@@ -15,19 +15,27 @@ On the home page, click **Start a Debate** and fill in:
 - **Category** — Business, Technology, Policy, Personal, or Other
 - **Debate Mode** — choose how many perspectives you want and how adversarial the debate should be
 
-### 3. Watch the Debate Unfold
+### 3. Review & Customize Your Panel
+After you submit your question, the AI suggests an expert panel — you don't go straight into the debate. Instead you land on a panel review screen where you can:
+- **Swap** any expert for another from the curated library, or for a **custom expert** you define yourself (name, role, what they care about, communication style, and areas of expertise)
+- **Remove** an expert (panel must keep at least 2)
+- **Add** an expert (panel can grow to at most 6)
+
+Click **Confirm Panel** when you're happy with the lineup — that's when the debate is actually created and begins. Click **Back** to change your question or mode instead.
+
+### 4. Watch the Debate Unfold
 Before the debate starts, the panel breaks your question down into the 3–5 dimensions that actually matter for the decision (for example: cost, effectiveness, feasibility, risk, alternatives) — shown as small tags above the debate. This keeps the panel from fixating on a single number or detail in your question (e.g. a price) and ignoring everything else relevant to the decision. You'll then see:
 - Each expert's opening statement, cross-examination, and closing argument — each expert is assigned one of the decision dimensions to argue, so the debate covers the question from multiple angles instead of just one
 - A **Scoreboard** showing each expert's scores for logic, evidence, persuasiveness, and more
 - A **Final Verdict** with the top recommendation, pros/cons, and key risks
 
-### 4. Ask the Panel
+### 5. Ask the Panel
 During or after the debate, use **Ask the Panel** to inject your own question — the experts respond in real time, whether the debate is still running or has already finished. You don't need to start a new debate to ask a follow-up; it's answered on the same debate page.
 
-### 5. Rate the Debate
+### 6. Rate the Debate
 Once the debate ends, a **Review** prompt appears. Give a star rating (1–5) and optional written feedback. Your review helps improve the platform.
 
-### 6. Export the Report
+### 7. Export the Report
 Once the debate completes, click **Export Report** to download a full PDF summary including the verdict, scores, and all messages.
 
 ## Choosing Your AI Provider

@@ -98,6 +98,32 @@
       "description": "Economists debate the real impact"
     }
   },
+  "panel_editor": {
+    "title": "Review Your Panel",
+    "subtitle": "The AI suggested these experts. Swap any of them out, add your own, or confirm as-is.",
+    "category_label": "Suggested for: {category}",
+    "swap": "Swap",
+    "remove": "Remove",
+    "add_expert": "Add Expert",
+    "size_hint": "{n} of {min}–{max} experts selected",
+    "tab_library": "From Library",
+    "tab_custom": "Custom Expert",
+    "loading_library": "Loading expert library…",
+    "library_error": "Failed to load expert library",
+    "custom_badge": "Custom",
+    "custom_name_placeholder": "Name (e.g. Aunt Rosa)",
+    "custom_role_placeholder": "Role (e.g. Retired Accountant)",
+    "custom_bias_placeholder": "What do they care about / push for? (their bias & perspective)",
+    "custom_style_placeholder": "Communication style (e.g. blunt, warm, analytical)",
+    "custom_domains_placeholder": "Expertise, comma-separated (e.g. taxes, savings)",
+    "custom_add": "Add to Panel",
+    "error_duplicate": "That expert is already in your panel.",
+    "error_min": "A panel needs at least {n} experts.",
+    "error_custom_required": "Please fill in a name, role, and a bias/perspective (10+ characters).",
+    "back": "Back",
+    "confirm": "Confirm Panel",
+    "creating": "Creating debate…"
+  },
   "debate_arena": {
     "loading": "Loading debate…",
     "live": "Live",

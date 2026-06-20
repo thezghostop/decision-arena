@@ -6,25 +6,29 @@ import { useAuth } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { Brain, Users, Zap, Shield, Loader2, ArrowRight } from "lucide-react";
-import { createDebate, setAuthToken, healthCheck } from "@/lib/api";
+import { classifyQuestion, createDebateWithPanel, setAuthToken, healthCheck } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useAISettings } from "@/hooks/useAISettings";
-import type { DebateMode } from "@/types";
+import { PanelEditor } from "./PanelEditor";
+import type { AgentConfig, DebateCategory, DebateMode } from "@/types";
 
 export function ArenaSetup() {
   const router = useRouter();
   const { getToken } = useAuth();
   const { t } = useI18n();
   const { toLLMConfig } = useAISettings();
+  const [step, setStep] = useState<"setup" | "panel">("setup");
   const [question, setQuestion] = useState("");
   const [mode, setMode] = useState<DebateMode>("standard");
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
+  const [classification, setClassification] = useState<{
+    category: DebateCategory;
+    suggestedPanel: AgentConfig[];
+  } | null>(null);
 
   // Ping backend on mount so Render wakes up before the user hits Submit
-  useEffect(() => {
-    healthCheck();
-  }, []);
+  useEffect(() => { healthCheck(); }, []);
 
   const MODES: {
     id: DebateMode;
@@ -77,27 +81,51 @@ export function ArenaSetup() {
       if (!token) throw new Error("Not authenticated");
       setAuthToken(token);
 
-      setLoadingStep(t("arena_setup.assembling"));
-      const debate = await createDebate({
-        question: question.trim(),
-        mode,
-        llm_config: toLLMConfig(),
-      });
-
-      router.push(`/arena/${debate.id}`);
+      const result = await classifyQuestion(question.trim(), mode);
+      setClassification({ category: result.category, suggestedPanel: result.suggested_panel });
+      setStep("panel");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to start debate";
-      toast.error(
-        msg.includes("422")
-          ? "Backend validation error — check backend logs"
-          : msg,
-      );
+      const msg =
+        err instanceof Error ? err.message : "Failed to classify question";
+      toast.error(msg.includes("422") ? "Backend validation error — check backend logs" : msg);
       console.error(err);
     } finally {
       setLoading(false);
       setLoadingStep("");
     }
   };
+
+  const handleConfirmPanel = async (panel: AgentConfig[]) => {
+    if (!classification) return;
+    setLoading(true);
+    try {
+      const debate = await createDebateWithPanel({
+        question: question.trim(),
+        category: classification.category,
+        mode,
+        panel,
+        llm_config: toLLMConfig(),
+      });
+      router.push(`/arena/${debate.id}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to start debate";
+      toast.error(msg.includes("422") ? "Backend validation error — check backend logs" : msg);
+      console.error(err);
+      setLoading(false);
+    }
+  };
+
+  if (step === "panel" && classification) {
+    return (
+      <PanelEditor
+        category={classification.category}
+        suggestedPanel={classification.suggestedPanel}
+        onConfirm={handleConfirmPanel}
+        onBack={() => setStep("setup")}
+        loading={loading}
+      />
+    );
+  }
 
   return (
     <motion.div
@@ -106,9 +134,7 @@ export function ArenaSetup() {
       className="space-y-8"
     >
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">
-          {t("arena_setup.title")}
-        </h1>
+        <h1 className="text-3xl font-bold text-white mb-2">{t("arena_setup.title")}</h1>
         <p className="text-slate-400">{t("arena_setup.subtitle")}</p>
       </div>
 
@@ -116,8 +142,7 @@ export function ArenaSetup() {
         {/* Question */}
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-2">
-            {t("arena_setup.question_label")}{" "}
-            <span className="text-red-400">*</span>
+            {t("arena_setup.question_label")} <span className="text-red-400">*</span>
           </label>
           <textarea
             value={question}
@@ -128,16 +153,12 @@ export function ArenaSetup() {
             maxLength={1000}
           />
           <div className="flex justify-between mt-1">
-            <span
-              className={`text-xs ${question.length < 10 && question.length > 0 ? "text-red-400" : "text-slate-500"}`}
-            >
+            <span className={`text-xs ${question.length < 10 && question.length > 0 ? "text-red-400" : "text-slate-500"}`}>
               {question.length < 10 && question.length > 0
                 ? t("arena_setup.chars_needed", { n: 10 - question.length })
                 : ""}
             </span>
-            <span className="text-xs text-slate-500">
-              {question.length}/1000
-            </span>
+            <span className="text-xs text-slate-500">{question.length}/1000</span>
           </div>
         </div>
 

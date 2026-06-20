@@ -19,12 +19,17 @@ Each expert represents a distinct analytical perspective on the debate question.
 **Configuration (`AgentConfig`)**
 | Field | Description |
 |-------|-------------|
-| `id` | Unique identifier (e.g. `risk-analyst`) |
-| `name` | Display name |
-| `role` | Short role label (e.g. "Risk Analyst") |
-| `bias` | Analytical stance: `optimist`, `pessimist`, `neutral`, `contrarian` |
-| `icon` | Emoji avatar |
-| `color` | Hex colour for UI |
+| `id` | Unique identifier (e.g. `risk-analyst`, or `custom_<slug>_<rand>` for user-defined personas) |
+| `name` | Display name (≤80 chars) |
+| `role` | Short role label, e.g. "Risk Analyst" (≤80 chars) |
+| `bias` | Analytical stance / what they advocate for (≤300 chars) |
+| `icon` | Emoji avatar (≤8 chars) |
+| `color` | Hex colour for UI (≤20 chars) |
+| `communication_style` | e.g. `analytical`, `provocative`, `empathetic`, `pragmatic` (≤60 chars) |
+| `expertise_domains` | 1–8 domain strings, ≤40 chars each |
+| `is_custom` | `True` if the user typed this persona in at debate setup rather than picking it from `EXPERT_LIBRARY` (default `False`) |
+
+All string fields are length-capped because `ExpertAgent.system_prompt` interpolates them directly into the LLM system prompt via f-strings with no other sanitization — this bounds cost/abuse risk now that custom personas accept arbitrary user text. Each custom persona only affects the creating user's own private debate.
 
 **Stages an expert participates in**
 - `opening` — punchy opening statement (60–80 words)
@@ -40,7 +45,9 @@ Each expert represents a distinct analytical perspective on the debate question.
 
 Selects the expert panel for a question and decomposes the question into the dimensions the debate must cover.
 
-**`build_panel(question, category, mode)`** — picks 4 expert IDs from the curated `EXPERT_LIBRARY` (LLM-selected for `standard` mode, fixed overrides for `boardroom`/`shark_tank`/`policy` modes, category-based defaults on failure).
+**`build_panel(question, category, mode)`** — picks 4 expert IDs from the curated `EXPERT_LIBRARY` (LLM-selected for `standard` mode, fixed overrides for `boardroom`/`shark_tank`/`policy` modes, category-based defaults on failure). `EXPERT_LIBRARY` now includes six personal-decision personas (`financial_planner`, `licensed_therapist`, `life_coach`, `best_friend`, `protective_parent`, `physician`) alongside the original career/business/tech/policy set, and `CATEGORY_DEFAULTS["personal"]` was updated to default to a personal-decision panel instead of reusing business/career personas. Since the LLM selector's `available_ids` is derived dynamically from `EXPERT_LIBRARY`'s keys, new personas need no other code change to become selectable.
+
+This is only the **suggested** panel — `POST /api/v1/debates/classify` returns it without creating a debate. The frontend's `PanelEditor` then lets the user swap any member (for another `EXPERT_LIBRARY` persona, fetched via `GET /api/v1/debates/experts`, or for a fully custom persona they define), add up to 6 total, or remove down to 2, before `POST /api/v1/debates/` creates the debate with the final panel. The backend places no restriction on how close the final panel must be to the suggestion — `build_panel`'s output is a starting point, not an enforced minimum.
 
 **`extract_decision_parameters(question)`** — returns 3–5 short decision-relevant parameter labels (e.g. `"Cost & affordability"`, `"Effectiveness & expected outcomes"`, `"Feasibility & practical execution"`). Run once per debate, before the opening stage. This exists so the panel debates the whole decision rather than fixating on the single number or detail the user happened to mention in the question (e.g. a price) — a real issue reported by a user whose question was about a per-subject course fee, where the entire debate ended up only discussing the fee and never the plan's actual effectiveness. Falls back to a generic 5-parameter set (`Cost & affordability`, `Effectiveness & expected outcomes`, `Feasibility & practical execution`, `Risks & downsides`, `Alternatives & opportunity cost`) on any LLM/parse failure, so the multi-aspect behavior still holds even if extraction fails.
 
@@ -144,9 +151,14 @@ Each expert then streams a fresh response to the question, and the response is p
 
 ## Adding a New Expert Persona
 
-1. Add an `AgentConfig` entry to the panel configuration
-2. No code changes needed — `ExpertAgent` is fully data-driven
+**Curated (available to every user, AI-selectable):**
+1. Add an `AgentConfig` entry to `EXPERT_LIBRARY` in `backend/app/agents/panel_builder.py`
+2. No other code changes needed — `ExpertAgent` is fully data-driven, and the LLM panel selector picks up new IDs automatically since `available_ids` is derived from `EXPERT_LIBRARY` at call time
 3. The `bias` field shapes the system prompt automatically
+4. Optionally add the new ID to a `CATEGORY_DEFAULTS` list so it's used as a fallback when LLM selection fails for that category
+
+**Custom (one-off, defined by an end user):**
+No code change at all — the user fills in name/role/bias/communication_style/expertise_domains in `PanelEditor`'s "Custom Expert" tab at debate setup, capped by the `AgentConfig` field length limits above. Stored with `is_custom: true`, scoped to that user's debate.
 
 ## Environment Variables
 

@@ -6,6 +6,11 @@ import type {
   CreateDebatePayload,
   AudienceInjectionRequest,
   DebateMode,
+  AgentConfig,
+  DocumentItem,
+  UploadDocumentResponse,
+  AskDocumentResponse,
+  DocumentQuestion,
 } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -27,20 +32,28 @@ export function setAuthToken(token: string | null) {
 // Step 1: classify question → get category + suggested panel
 export async function classifyQuestion(
   question: string,
-  mode?: DebateMode,
+  mode?: DebateMode
 ): Promise<ClassifyResponse> {
   const { data } = await apiClient.post<ClassifyResponse>(
     "/api/v1/debates/classify",
-    { question, mode },
+    { question, mode }
   );
   return data;
 }
 
-// Step 2: create debate with full payload
-async function _createDebate(payload: CreateDebatePayload): Promise<Debate> {
+// Full curated expert library — lets the user swap in a different preset
+// persona when manually editing a panel, without duplicating persona data
+// in the frontend.
+export async function listExperts(): Promise<AgentConfig[]> {
+  const { data } = await apiClient.get<AgentConfig[]>("/api/v1/debates/experts");
+  return data;
+}
+
+// Step 2: create debate with full payload (question + category + mode + final panel)
+export async function createDebateWithPanel(payload: CreateDebatePayload): Promise<Debate> {
   const { data } = await apiClient.post<{ debate_id: string; debate: Debate }>(
     "/api/v1/debates/",
-    payload,
+    payload
   );
   return data.debate;
 }
@@ -53,14 +66,15 @@ export interface LLMConfig {
   groq_model?: string;
 }
 
-// Public: classify then create in one call
+// Convenience: classify then create immediately with the AI-suggested panel
+// (used by any caller that skips panel review/editing).
 export async function createDebate(opts: {
   question: string;
   mode: DebateMode;
   llm_config?: LLMConfig;
 }): Promise<Debate> {
   const classification = await classifyQuestion(opts.question, opts.mode);
-  return _createDebate({
+  return createDebateWithPanel({
     question: opts.question,
     category: classification.category,
     mode: opts.mode,
@@ -76,7 +90,7 @@ export async function getDebate(debateId: string): Promise<Debate> {
 
 export async function getMessages(debateId: string): Promise<DebateMessage[]> {
   const { data } = await apiClient.get<DebateMessage[]>(
-    `/api/v1/debates/${debateId}/messages`,
+    `/api/v1/debates/${debateId}/messages`
   );
   // Derive `role` for MessageBubble rendering
   return data.map((m) => ({
@@ -95,16 +109,17 @@ export async function listDebates(): Promise<Debate[]> {
 }
 
 export async function injectAudienceQuestion(
-  payload: AudienceInjectionRequest,
+  payload: AudienceInjectionRequest
 ): Promise<void> {
-  await apiClient.post(`/api/v1/debates/${payload.debate_id}/inject`, {
-    question: payload.question,
-  });
+  await apiClient.post(
+    `/api/v1/debates/${payload.debate_id}/inject`,
+    { question: payload.question }
+  );
 }
 
 export async function exportDebateReport(debateId: string): Promise<string> {
   const { data } = await apiClient.post<{ download_url: string }>(
-    `/api/v1/reports/${debateId}`,
+    `/api/v1/reports/${debateId}`
   );
   return data.download_url;
 }
@@ -116,4 +131,53 @@ export async function healthCheck(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// ── Local Document Q&A ───────────────────────────────────────────────────────
+
+export async function uploadDocument(file: File): Promise<UploadDocumentResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const { data } = await apiClient.post<UploadDocumentResponse>(
+    "/api/v1/documents/upload",
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+export async function listDocuments(): Promise<DocumentItem[]> {
+  const { data } = await apiClient.get<DocumentItem[]>("/api/v1/documents/");
+  return data;
+}
+
+export async function getDocument(documentId: string): Promise<DocumentItem> {
+  const { data } = await apiClient.get<DocumentItem>(
+    `/api/v1/documents/${documentId}`
+  );
+  return data;
+}
+
+export async function askDocument(
+  documentId: string,
+  question: string
+): Promise<AskDocumentResponse> {
+  const { data } = await apiClient.post<AskDocumentResponse>(
+    `/api/v1/documents/${documentId}/ask`,
+    { question }
+  );
+  return data;
+}
+
+export async function getDocumentQuestions(
+  documentId: string
+): Promise<DocumentQuestion[]> {
+  const { data } = await apiClient.get<DocumentQuestion[]>(
+    `/api/v1/documents/${documentId}/questions`
+  );
+  return data;
+}
+
+export async function deleteDocument(documentId: string): Promise<void> {
+  await apiClient.delete(`/api/v1/documents/${documentId}`);
 }

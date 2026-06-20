@@ -79,8 +79,9 @@
 Landing Page
     → Enter decision question
     → (optional) Select mode: Standard / Boardroom / Shark Tank / Policy Arena
-    → AI categorizes decision + selects expert panel (preview shown)
-    → User confirms or customizes panel
+    → POST /api/v1/debates/classify → AI categorizes decision + selects expert panel (no debate created yet)
+    → PanelEditor shown: user swaps/adds/removes members (curated library or fully custom), 2–6 total
+    → POST /api/v1/debates/ with the final panel → debate is created
     → Debate begins (WebSocket stream)
         Stage 1: Opening Statements (each expert)
         Stage 2: Cross-Examination (experts question each other)
@@ -261,25 +262,40 @@ CREATE POLICY "Users see own debate messages" ON debate_messages
 ```
 User question → CategoryClassifier → PanelBuilder
     CategoryClassifier: uses LLM to classify into [career, business, tech, policy, personal, other]
-    PanelBuilder: maps category + question keywords to 3–5 expert personas
+    PanelBuilder: maps category + question keywords to 4 expert personas from EXPERT_LIBRARY
     Each persona has: {id, name, role, system_prompt, bias, communication_style, avatar_seed}
+
+    This is only the SUGGESTED panel (POST /api/v1/debates/classify). The user
+    then edits it in PanelEditor — swap a member for another EXPERT_LIBRARY
+    persona (fetched via GET /api/v1/debates/experts) or for a fully custom
+    persona they type in themselves — before POST /api/v1/debates/ actually
+    creates the debate with the final 2–6 member panel.
 ```
 
 ### Expert Agent Schema
 ```python
 ExpertAgent:
-  id: str                  # slug e.g. "startup_founder"
+  id: str                  # slug e.g. "startup_founder", or "custom_<slug>_<rand>" for user-defined personas
   name: str                # display name e.g. "Alex Chen"
   role: str                # role label e.g. "Serial Startup Founder"
   icon: str                # emoji
   color: str               # hex for UI theming
   system_prompt: str       # full persona instructions
   bias: str                # what they naturally advocate for
-  communication_style: str # analytical | provocative | empathetic | pragmatic
+  communication_style: str # analytical | provocative | empathetic | pragmatic | freeform (custom)
   expertise_domains: list[str]
+  is_custom: bool          # True if typed in by the user at debate setup, not from EXPERT_LIBRARY
 ```
 
-### Built-in Expert Library (expandable)
+`AgentConfig` enforces field length limits (id ≤64, name/role ≤80, icon ≤8,
+color ≤20, bias ≤300, communication_style ≤60, expertise_domains 1–8 items
+≤40 chars each) since `ExpertAgent.system_prompt` interpolates these fields
+directly into the LLM system prompt with no other sanitization — this bounds
+cost/abuse risk now that custom personas let a user type arbitrary text into
+them. Each user's custom persona only affects their own private debate, so
+this is a cost/UX guard rather than a cross-tenant security boundary.
+
+### Built-in Expert Library (expandable, `backend/app/agents/panel_builder.py::EXPERT_LIBRARY`)
 | Persona | Used For | Bias |
 |---|---|---|
 | Serial Startup Founder | Career, Business | Action, speed, market |
@@ -296,6 +312,28 @@ ExpertAgent:
 | Economist | Policy | GDP, incentives, externalities |
 | Civil Society Rep | Policy | Equity, access, social impact |
 | Devil's Advocate | Any | Opposing the consensus |
+| Financial Planner | Personal | Budgeting, savings, long-term security |
+| Licensed Therapist | Personal | Emotional wellbeing, mental health impact |
+| Life Coach | Personal | Personal growth, momentum, taking action |
+| Best Friend | Personal | Loyalty, honesty, your happiness over optics |
+| Protective Parent | Personal | Safety, caution, worst-case scenarios |
+| Physician | Personal | Physical health, medical risk |
+
+`CATEGORY_DEFAULTS["personal"]` now defaults to `[financial_planner,
+licensed_therapist, best_friend, life_coach]`, used whenever the LLM-based
+panel selection fails for a `personal`-category question — this was
+previously a reused business/career persona set, ill-suited to questions
+like "should I move back in with my parents."
+
+### Custom Personas
+
+Any panel member can instead be fully user-defined: name, role, icon,
+color, bias, communication style, and expertise domains, all typed in via
+`PanelEditor`'s "Custom Expert" tab. The backend treats a custom persona
+identically to a curated one — same `AgentConfig` shape, same validation,
+`is_custom: true` is the only difference — so no special-casing exists
+anywhere downstream (orchestrator, `ExpertAgent`, scoring, verdict
+synthesis all operate on `AgentConfig` without checking `is_custom`).
 
 ### Moderator Agent
 ```
@@ -427,7 +465,8 @@ decision-arena/
 │   ├── components/
 │   │   ├── ui/                        # Shared UI primitives
 │   │   ├── arena/
-│   │   │   ├── ArenaSetup.tsx         # Question input + panel preview
+│   │   │   ├── ArenaSetup.tsx         # Question input (step 1) → classify → renders PanelEditor (step 2)
+│   │   │   ├── PanelEditor.tsx        # Swap/add/remove panel members; curated library or custom persona form
 │   │   │   ├── DebateStage.tsx        # Stage progress indicator
 │   │   │   ├── ExpertCard.tsx         # Agent bubble/card
 │   │   │   ├── MessageBubble.tsx      # Debate message with fallacy/fact tags
@@ -551,8 +590,9 @@ decision-arena/
 ### REST Endpoints
 
 ```
-POST   /api/v1/debates/classify         # Classify question, suggest panel
-POST   /api/v1/debates/                 # Create new debate
+POST   /api/v1/debates/classify         # Step 1: classify question, suggest panel (no debate created)
+GET    /api/v1/debates/experts          # Full curated expert library, for manual panel editing
+POST   /api/v1/debates/                 # Step 2: create new debate with the user's final panel
 GET    /api/v1/debates/                 # List user's debates
 GET    /api/v1/debates/{id}             # Get debate with messages
 DELETE /api/v1/debates/{id}             # Delete debate

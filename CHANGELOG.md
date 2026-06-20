@@ -8,6 +8,13 @@ See [cliff.toml](cliff.toml) for configuration.
 ## [Unreleased]
 
 ### Added
+- Manual panel editing: `POST /api/v1/debates/classify` now returns only the suggested panel (no debate created yet) — the frontend shows it in a new `PanelEditor` component so the user can swap, add, or remove panel members before confirming. `POST /api/v1/debates/` (step 2) creates the debate once the user confirms their final 2–6 member panel
+- Custom personas: any panel member can now be fully user-defined (name, role, icon, color, bias, communication style, expertise domains) via `PanelEditor`'s "Custom Expert" tab — no curated persona required, no code changes needed. Stored with `AgentConfig.is_custom: true`
+- Six new personal-decision personas added to `EXPERT_LIBRARY` (`backend/app/agents/panel_builder.py`): `financial_planner`, `licensed_therapist`, `life_coach`, `best_friend`, `protective_parent`, `physician`. `CATEGORY_DEFAULTS["personal"]` now defaults to a personal-decision panel instead of reusing business/career personas
+- `GET /api/v1/debates/experts` — returns the full curated expert library (no auth required), used by `PanelEditor`'s "swap from library" picker so persona data isn't duplicated in the frontend
+- `AgentConfig` hardening: `Field` length constraints on every string field (id ≤64, name/role ≤80, icon ≤8, color ≤20, bias ≤300, communication_style ≤60, expertise_domains 1–8 items ≤40 chars each) plus a validator rejecting blank/over-long expertise domain entries — bounds cost/abuse risk now that custom personas accept arbitrary user text that gets interpolated directly into the LLM system prompt
+- `frontend/lib/api.ts`: `listExperts()` and `createDebateWithPanel()`; `createDebate()` kept as a classify-then-create convenience wrapper for callers that skip panel review
+- `panel_editor.*` i18n keys (EN/HI/KN)
 - Google ADK (Agent Development Kit) integration: `DocumentQAAgent` (`app/services/document_qa/adk_agent.py`) is now the primary Document Q&A engine — a real ADK `Agent` (model `gemini-2.5-flash`) with a `read_section` function tool, run via `InMemoryRunner`, replacing the hand-rolled find→retrieve→answer loop with ADK's own tool-calling reasoning loop. Active whenever `GEMINI_API_KEY` is set
 - Document Q&A fallback path: when no `GEMINI_API_KEY` is configured, `api/documents.py` now falls back to the original fully-offline `workflow.find_retrieve_answer()` + local Llama.cpp model, so the feature keeps working with no API key
 - `google-adk==2.2.0` added to `backend/requirements.txt`
@@ -39,6 +46,8 @@ See [cliff.toml](cliff.toml) for configuration.
 - Spec-Kit spec-driven development scaffolding
 
 ### Fixed
+- `PanelEditor`'s custom-persona ID (`custom_<slug>_<rand>`) could exceed `AgentConfig.id`'s 64-char limit for long persona names, causing a 422 on debate creation — the slug is now truncated to 52 chars to leave room for the fixed `custom_`/`_xxxx` overhead
+- `B904` ruff violations in `backend/app/api/documents.py`'s `ask_document` route — `raise HTTPException(...)` inside two `except Exception:` blocks (ADK agent failure, local model load failure) now use `except Exception as exc` + `raise ... from exc` to preserve the original traceback
 - Post-debate follow-up Q&A silently dropping questions: the WebSocket connection opened for a live debate stayed open unchanged after completion, so a follow-up question sent over that same connection was routed to the (by-then-dead) in-debate audience-injection queue instead of Q&A mode. The backend now hands the same connection directly to Q&A mode the moment the debate completes, so every follow-up gets a real streamed expert response
 - In-debate audience question injection being silently dropped: the orchestrator only drained the injection queue at a `rebuttals` stage that had already been removed from the stage pipeline. The queue is now drained after every stage
 - Stale closure bug in `debate_complete` WebSocket handler — fixed by using `useDebateStore.getState()` instead of captured store reference

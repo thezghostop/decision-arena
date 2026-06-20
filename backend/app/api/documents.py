@@ -143,17 +143,17 @@ async def ask_document(
                 api_key=settings.gemini_api_key,
                 max_sections_to_check=settings.document_qa_max_sections,
             )
-        except Exception:
+        except Exception as exc:
             logger.exception("ADK document Q&A agent failed")
             raise HTTPException(
                 status_code=503,
                 detail="The document Q&A agent failed to respond. Check server logs.",
-            )
+            ) from exc
     else:
         # Fallback engine: fully offline, no API key — local Llama.cpp model.
         try:
             model = get_or_load_model(settings.document_qa_model)
-        except Exception:
+        except Exception as exc:
             logger.exception("Failed to load document Q&A model")
             raise HTTPException(
                 status_code=503,
@@ -161,7 +161,7 @@ async def ask_document(
                 "available either. Set GEMINI_API_KEY for the ADK agent, or check "
                 "that llama-cpp-python is installed and the model can be downloaded "
                 "on this server.",
-            )
+            ) from exc
 
         answer, sections_checked = find_retrieve_answer(
             question=payload.question,

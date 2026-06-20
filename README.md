@@ -16,7 +16,7 @@ Making good decisions is hard. Whether it's a business pivot, a career move, a p
 
 ### Proposed Solution
 
-Decision Arena puts a panel of AI expert agents in the room with you. You describe your decision, and a structured debate unfolds — opening arguments, cross-examination, closing statements, and a final synthesised verdict with risk analysis, top recommendations, and per-expert scores. You can also inject your own questions mid-debate and ask follow-ups after it ends.
+Decision Arena puts a panel of AI expert agents in the room with you. You describe your decision, the AI suggests an expert panel, and you can review and edit that panel — swap any member for another curated persona or a fully custom one you define yourself, add up to 6, remove down to 2 — before the debate begins. Then a structured debate unfolds: opening arguments, cross-examination, closing statements, and a final synthesised verdict with risk analysis, top recommendations, and per-expert scores. You can also inject your own questions mid-debate and ask follow-ups after it ends.
 
 ### Existing Solutions
 
@@ -65,6 +65,7 @@ Most decision-support tools give a single answer. None simulate what it's like t
 Decision Arena assembles an AI expert panel and runs a structured multi-stage debate around your question:
 
 - **Expert agents** with distinct biases (optimist, pessimist, contrarian, neutral) argue their positions
+- **Editable panel** — the AI suggests a panel, but you can swap, add, or remove experts (curated or fully custom) before the debate starts
 - **Real-time streaming** delivers every token to your browser as it's generated
 - **Cross-examination** forces experts to challenge each other's weakest arguments
 - **Scoring** evaluates each expert on logic, evidence, practicality, risk awareness, long-term thinking, and persuasiveness
@@ -78,7 +79,9 @@ Decision Arena assembles an AI expert panel and runs a structured multi-stage de
 | Feature | Description |
 |---------|-------------|
 | Live Debate Streaming | Token-by-token streaming via WebSocket — watch experts think in real time |
-| Multi-Expert Panel | 3–6 AI experts with distinct roles, biases, and analytical styles |
+| Multi-Expert Panel | 2–6 AI experts with distinct roles, biases, and analytical styles |
+| Manual Panel Editing | Review the AI-suggested panel and swap, add, or remove experts before the debate starts |
+| Custom Personas | Define your own expert — name, role, bias, communication style, expertise — typed in at debate setup, no code changes needed |
 | Structured Stages | Opening → Cross-Examination → Closing → Verdict |
 | Multi-Aspect Decision Breakdown | Before the debate starts, the question is decomposed into 3–5 decision-relevant parameters (cost, effectiveness, feasibility, risk, alternatives, etc.) so the panel argues the whole decision instead of fixating on one detail the question mentions |
 | Expert Scoring | Six-criteria scoring: logic, evidence, practicality, risk awareness, long-term thinking, persuasiveness |
@@ -218,13 +221,27 @@ decision-arena/
 
 ### `POST /api/v1/debates/classify`
 
-Classifies the question and returns a suggested expert panel.
+Step 1 of debate creation. Classifies the question and returns a suggested
+expert panel — does **not** create a debate yet. The frontend shows this
+panel in a `PanelEditor` so the user can swap, add, or remove members before
+confirming.
 
 **Body:** `{ "question": "...", "mode": "standard" }`
 
+**Response:** `{ "category": "business", "mode": "standard", "suggested_panel": [...], "confidence": 0.9 }`
+
+### `GET /api/v1/debates/experts`
+
+Returns the full curated expert library (no auth required) — every persona
+available for the `PanelEditor`'s "swap from library" picker, so the
+frontend doesn't duplicate persona data.
+
 ### `POST /api/v1/debates`
 
-Creates a new debate. `llm_config` is optional — omit to use the server default (Groq).
+Step 2 of debate creation. Creates the debate with the user's final panel
+(AI-suggested as-is, edited, or fully custom — any mix). `panel` must contain
+2–6 members with no duplicate `id`s. `llm_config` is optional — omit to use
+the server default (Groq).
 
 **Body:**
 ```json
@@ -232,6 +249,19 @@ Creates a new debate. `llm_config` is optional — omit to use the server defaul
   "question": "Should I co-found this startup?",
   "category": "business",
   "mode": "standard",
+  "panel": [
+    {
+      "id": "startup_founder",
+      "name": "Alex Chen",
+      "role": "Serial Startup Founder",
+      "icon": "🚀",
+      "color": "#7C3AED",
+      "bias": "Action, speed, market validation over planning",
+      "communication_style": "direct",
+      "expertise_domains": ["fundraising", "product-market fit"],
+      "is_custom": false
+    }
+  ],
   "llm_config": {
     "provider": "groq",
     "api_key": "gsk_...",
@@ -239,6 +269,10 @@ Creates a new debate. `llm_config` is optional — omit to use the server defaul
   }
 }
 ```
+
+A panel member can also be `is_custom: true` — a persona the user typed in
+themselves (any name/role/bias/style/domains, within the field length
+limits enforced by `AgentConfig`), not drawn from the curated library.
 
 **Response:**
 ```json

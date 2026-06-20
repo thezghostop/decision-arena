@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator, Optional
+from collections.abc import AsyncIterator
+
 from app.agents.base import BaseAgent
 from app.models.debate import AgentConfig, DebateStage
-
 
 STAGE_INSTRUCTIONS: dict[str, str] = {
     "opening": (
@@ -87,9 +87,9 @@ class ExpertAgent(BaseAgent):
         stage: DebateStage,
         question: str,
         context: str,
-        audience_question: Optional[str] = None,
-        focus_parameter: Optional[str] = None,
-        decision_parameters: Optional[list[str]] = None,
+        audience_question: str | None = None,
+        focus_parameter: str | None = None,
+        decision_parameters: list[str] | None = None,
     ) -> AsyncIterator[str]:
         """Stream the expert's contribution for the given stage."""
         stage_instruction = STAGE_INSTRUCTIONS.get(stage.value, STAGE_INSTRUCTIONS["opening"])

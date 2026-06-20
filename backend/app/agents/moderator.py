@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
+
 from app.agents.base import BaseAgent
 from app.models.debate import DebateStage
-
 
 STAGE_INTROS: dict[str, str] = {
     "opening": "Opening Statements",
@@ -112,7 +112,7 @@ class ModeratorAgent(BaseAgent):
             f"Full debate summary:\n{debate_summary}\n\n"
             f"{params_instruction}"
             "Synthesize a comprehensive verdict. Return ONLY valid JSON with this exact structure:\n"
-            '{\n'
+            "{\n"
             '  "executive_summary": "2-3 sentence summary of the debate and final recommendation",\n'
             '  "consensus_areas": ["area 1", "area 2"],\n'
             '  "disagreements": ["disagreement 1", "disagreement 2"],\n'
@@ -125,8 +125,8 @@ class ModeratorAgent(BaseAgent):
             '    {"label": "Revenue Potential", "value": 85, "category": "benefit", "description": "..."},\n'
             '    {"label": "Capital Required", "value": 60, "category": "cost", "description": "..."},\n'
             '    {"label": "Competitive Gap", "value": 70, "category": "opportunity", "description": "..."}\n'
-            '  ]\n'
-            '}\n\n'
+            "  ]\n"
+            "}\n\n"
             "Generate at least 3 items per category. confidence_score must be between 0.0 and 1.0."
             f"{lang_instruction}"
         )

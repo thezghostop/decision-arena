@@ -55,11 +55,7 @@ export const useDebateStore = create<DebateState>()(
       decisionParameters: [],
 
       setDebate: (debate) =>
-        set(
-          { debate, currentStage: debate.current_stage },
-          false,
-          "setDebate"
-        ),
+        set({ debate, currentStage: debate.current_stage }, false, "setDebate"),
 
       addMessage: (message) =>
         set(
@@ -69,30 +65,30 @@ export const useDebateStore = create<DebateState>()(
               : [...state.messages, message],
           }),
           false,
-          "addMessage"
+          "addMessage",
         ),
 
       appendToStreamingMessage: (id, token) =>
         set(
           (state) => ({
             messages: state.messages.map((m) =>
-              m.id === id ? { ...m, content: m.content + token } : m
+              m.id === id ? { ...m, content: m.content + token } : m,
             ),
           }),
           false,
-          "appendToken"
+          "appendToken",
         ),
 
       finalizeStreamingMessage: (id) =>
         set(
           (state) => ({
             messages: state.messages.map((m) =>
-              m.id === id ? { ...m, is_streaming: false } : m
+              m.id === id ? { ...m, is_streaming: false } : m,
             ),
             streamingMessageId: null,
           }),
           false,
-          "finalizeMessage"
+          "finalizeMessage",
         ),
 
       setStreamingMessageId: (id) =>
@@ -111,7 +107,7 @@ export const useDebateStore = create<DebateState>()(
               : null,
           }),
           false,
-          "setStage"
+          "setStage",
         ),
 
       setConnected: (isConnected) =>
@@ -133,13 +129,13 @@ export const useDebateStore = create<DebateState>()(
               ? {
                   ...state.debate,
                   panel: state.debate.panel.map((a) =>
-                    a.id === agent.id ? agent : a
+                    a.id === agent.id ? agent : a,
                   ),
                 }
               : null,
           }),
           false,
-          "updateAgent"
+          "updateAgent",
         ),
 
       resetDebate: () =>
@@ -156,9 +152,9 @@ export const useDebateStore = create<DebateState>()(
             decisionParameters: [],
           },
           false,
-          "resetDebate"
+          "resetDebate",
         ),
     }),
-    { name: "debate-store" }
-  )
+    { name: "debate-store" },
+  ),
 );

@@ -37,6 +37,7 @@ export interface AgentConfig {
   communication_style: string;
   expertise_domains: string[];
   avatar_seed?: string;
+  is_custom?: boolean;
 }
 
 // Frontend convenience alias
@@ -76,15 +77,15 @@ export interface DebateMessage {
   id: string;
   debate_id: string;
   stage: DebateStageType;
-  role?: MessageRole; // used by MessageBubble for rendering variant
+  role?: MessageRole;           // used by MessageBubble for rendering variant
   agent_id?: string;
   agent_name?: string;
-  agent_role?: string; // agent's job title, e.g. "CFO"
-  agent_title?: string; // alias shown in MessageBubble subtitle
+  agent_role?: string;          // agent's job title, e.g. "CFO"
+  agent_title?: string;         // alias shown in MessageBubble subtitle
   agent_icon?: string;
   agent_color?: string;
   content: string;
-  message_type?: string; // "argument" | "question" | "moderation"
+  message_type?: string;        // "argument" | "question" | "moderation"
   timestamp?: string;
   created_at?: string;
   fallacies?: Fallacy[];
@@ -195,4 +196,38 @@ export interface CreateDebatePayload {
 export interface AudienceInjectionRequest {
   debate_id: string;
   question: string;
+}
+
+// ── Local Document Q&A (PyMuPDF4LLM + Llama.cpp) ────────────────────────────
+
+export type DocumentStatus = "processing" | "ready" | "error";
+
+// Matches backend DocumentResponse
+export interface DocumentItem {
+  id: string;
+  user_id: string;
+  filename: string;
+  status: DocumentStatus;
+  num_sections: number;
+  error_message?: string;
+  created_at: string;
+}
+
+export interface UploadDocumentResponse {
+  document_id: string;
+  document: DocumentItem;
+}
+
+export interface AskDocumentResponse {
+  answer: string;
+  sections_checked: string[];
+}
+
+export interface DocumentQuestion {
+  id: string;
+  document_id: string;
+  question: string;
+  answer: string;
+  sections_checked: string[];
+  created_at: string;
 }

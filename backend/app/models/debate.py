@@ -1,7 +1,8 @@
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional
 from datetime import datetime
 from enum import Enum
-
-from pydantic import BaseModel, Field, field_validator
+import uuid
 
 
 class DebateCategory(str, Enum):
@@ -38,20 +39,32 @@ class DebateStage(str, Enum):
 
 
 class AgentConfig(BaseModel):
-    id: str
-    name: str
-    role: str
-    icon: str
-    color: str
-    bias: str
-    communication_style: str
-    expertise_domains: list[str]
-    avatar_seed: str | None = None
+    id: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=80)
+    role: str = Field(..., min_length=1, max_length=80)
+    icon: str = Field(..., min_length=1, max_length=8)
+    color: str = Field(..., min_length=1, max_length=20)
+    bias: str = Field(..., min_length=1, max_length=300)
+    communication_style: str = Field(..., min_length=1, max_length=60)
+    expertise_domains: list[str] = Field(..., min_length=1, max_length=8)
+    avatar_seed: Optional[str] = None
+    # True for personas the user typed in themselves (vs. the curated EXPERT_LIBRARY)
+    is_custom: bool = False
+
+    @field_validator("expertise_domains")
+    @classmethod
+    def validate_domain_lengths(cls, v: list[str]) -> list[str]:
+        for domain in v:
+            if not domain.strip():
+                raise ValueError("Expertise domain entries cannot be blank.")
+            if len(domain) > 40:
+                raise ValueError("Expertise domain entries must be 40 characters or fewer.")
+        return v
 
 
 class ClassifyRequest(BaseModel):
     question: str = Field(..., min_length=10, max_length=1000)
-    mode: DebateMode | None = None
+    mode: Optional[DebateMode] = None
 
 
 class ClassifyResponse(BaseModel):
@@ -63,12 +76,11 @@ class ClassifyResponse(BaseModel):
 
 class LLMProviderConfig(BaseModel):
     """Per-debate LLM config supplied by the client (BYOK / local Ollama)."""
-
-    provider: str = "server"  # server | ollama | groq | openai | gemini
-    api_key: str | None = None  # BYOK cloud key
-    ollama_base_url: str | None = None
-    ollama_model: str | None = None
-    groq_model: str | None = None
+    provider: str = "server"            # server | ollama | groq | openai | gemini
+    api_key: Optional[str] = None       # BYOK cloud key
+    ollama_base_url: Optional[str] = None
+    ollama_model: Optional[str] = None
+    groq_model: Optional[str] = None
 
 
 class CreateDebateRequest(BaseModel):
@@ -76,7 +88,7 @@ class CreateDebateRequest(BaseModel):
     category: DebateCategory
     mode: DebateMode = DebateMode.standard
     panel: list[AgentConfig] = Field(..., min_length=2, max_length=6)
-    llm_config: LLMProviderConfig | None = None
+    llm_config: Optional[LLMProviderConfig] = None
 
     @field_validator("panel")
     @classmethod
@@ -98,7 +110,7 @@ class DebateResponse(BaseModel):
     current_stage: DebateStage
     audience_questions: list[str]
     created_at: datetime
-    completed_at: datetime | None = None
+    completed_at: Optional[datetime] = None
 
 
 class CreateDebateResponse(BaseModel):
