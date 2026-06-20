@@ -36,7 +36,8 @@ Decision Arena is the only platform that simulates a live multi-expert adversari
 | State Management | Zustand |
 | Backend | FastAPI (Python 3.12) |
 | AI / LLM | Groq (llama-3.1-8b-instant), Ollama (local), Gemini 2.5 Flash, OpenAI |
-| Document Q&A | PyMuPDF4LLM (extraction) + Llama.cpp (local Qwen2.5-7B-Instruct GGUF) — no vectorDB |
+| Agent Framework | Google ADK (Agent Development Kit) — tool-calling agent for Document Q&A |
+| Document Q&A | PyMuPDF4LLM (extraction) + Google ADK/Gemini agent, with local Llama.cpp GGUF fallback — no vectorDB |
 | Database | Supabase (PostgreSQL) |
 | Auth | Clerk |
 | Streaming | WebSocket (real-time token streaming) |
@@ -94,7 +95,7 @@ Decision Arena assembles an AI expert panel and runs a structured multi-stage de
 | User Reviews | Rate and review debates (1–5 stars + written feedback) |
 | Review Export | `export_reviews.py` — export all user reviews to a formatted PDF |
 | Multilingual | Debate in English, Hindi (हिंदी), or Kannada (ಕನ್ನಡ) — all experts respond in the selected language |
-| Document Q&A | Upload a PDF/DOCX/TXT/MD/PPTX/XLSX and ask questions about it — answered locally, no vectorDB |
+| Document Q&A | Upload a PDF/DOCX/TXT/MD/PPTX/XLSX and ask questions about it — answered by a Google ADK agent (Gemini), no vectorDB |
 
 ---
 
@@ -156,14 +157,22 @@ Frontend available at: http://localhost:3000
 5. Run `supabase/migrations/003_documents.sql`
 6. Copy your project URL and service role key into `backend/.env`
 
-### 5. Document Q&A (optional, local-only)
+### 5. Document Q&A (Google ADK agent, with offline fallback)
 
-The document Q&A feature needs no API key — it runs entirely on the backend
-host via `llama-cpp-python`. The first request downloads the default model
-(`bartowski/Qwen2.5-7B-Instruct-GGUF`, ~8GB) to `~/.cache/huggingface` and
-caches it for all later requests. CPU inference is slow; a GPU (auto-detected
-via `nvidia-smi`) is used when available. See `DOCUMENT_QA_*` vars in
-`backend/.env.example` to change the model or storage location.
+The document Q&A feature answers questions with a [Google ADK](https://google.github.io/adk-docs/)
+`Agent`: Gemini reasons over the document and calls a `read_section` tool to
+pull in exactly the section(s) it needs before answering — no vectorDB, no
+embeddings. This is the primary engine whenever `GEMINI_API_KEY` is set
+(same key used for debates).
+
+If `GEMINI_API_KEY` is **not** set, the feature falls back to the original
+fully-offline path — no API key, no network calls at inference time — via
+`llama-cpp-python`. The first request on that path downloads the default
+model (`bartowski/Qwen2.5-7B-Instruct-GGUF`, ~8GB) to `~/.cache/huggingface`
+and caches it for all later requests. CPU inference is slow; a GPU
+(auto-detected via `nvidia-smi`) is used when available. See `DOCUMENT_QA_*`
+vars in `backend/.env.example` to change the fallback model or storage
+location.
 
 ---
 
@@ -191,7 +200,7 @@ decision-arena/
 │   │   └── services/
 │   │       ├── llm.py          # LLMService (multi-provider)
 │   │       ├── report_generator.py
-│   │       └── document_qa/    # PyMuPDF4LLM preprocessing, Llama.cpp loader, find-retrieve-answer workflow
+│   │       └── document_qa/    # PyMuPDF4LLM preprocessing, ADK/Gemini agent (primary), Llama.cpp loader + workflow (fallback)
 │   └── tests/                  # pytest test suite
 ├── supabase/
 │   └── migrations/             # 001_initial_schema.sql, 002_reviews.sql, 003_documents.sql

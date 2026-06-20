@@ -63,9 +63,10 @@
 └─────────────────────┘    └─────────────────────────┘  └─────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│              LOCAL DOCUMENT Q&A (no vectorDB, runs on the API host)  │
+│                  DOCUMENT Q&A (no vectorDB)                          │
 │  Upload → PyMuPDF4LLM (markdown) → heading split → sections/*.txt    │
-│  Question → Llama.cpp (local GGUF) → find section → answer from it   │
+│  Question → Google ADK Agent (Gemini) + read_section tool            │
+│             ↳ fallback (no GEMINI_API_KEY): Llama.cpp local GGUF     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -512,12 +513,13 @@ decision-arena/
 │   │       ├── __init__.py
 │   │       ├── llm.py                 # LLMService (Groq/Ollama/Gemini/OpenAI + fallback chain)
 │   │       ├── report_generator.py    # PDF generation via ReportLab
-│   │       └── document_qa/           # Local document Q&A (no vectorDB)
+│   │       └── document_qa/           # Document Q&A (no vectorDB)
 │   │           ├── __init__.py
-│   │           ├── config.py          # FIND_PROMPT / ANSWER_PROMPT
+│   │           ├── config.py          # FIND_PROMPT / ANSWER_PROMPT (fallback engine)
 │   │           ├── preprocessing.py   # PyMuPDF4LLM extraction + heading-based section split
-│   │           ├── model_loader.py    # Llama.cpp GGUF loading + process-wide cache
-│   │           └── workflow.py        # find -> retrieve -> answer loop (rapidfuzz section match)
+│   │           ├── adk_agent.py       # PRIMARY — Google ADK Agent + read_section tool (Gemini)
+│   │           ├── model_loader.py    # FALLBACK — Llama.cpp GGUF loading + process-wide cache
+│   │           └── workflow.py        # FALLBACK — find -> retrieve -> answer loop (rapidfuzz section match)
 │   │
 │   ├── tests/
 │   │   ├── test_debate_engine.py
@@ -822,39 +824,54 @@ Upload                         Ask
 file (.pdf/.docx/.txt/.md/      question
 .pptx/.xlsx, ≤25MB)                │
    │                               ▼
-   ▼                         get_or_load_model()
-PyMuPDF4LLM.to_markdown()    (Llama.cpp GGUF, cached
-   │                          in-process after first load)
-   ▼                               │
-split_markdown_by_headings()       ▼
-   │                         find_retrieve_answer():
-   ▼                           1. ask model: which section_name
-sections/<name>.txt × N             best matches the question?
-(+ _full_text.md for debug)       2. rapidfuzz-match model's reply
-   │                                 to the real section names
-   ▼                              3. read that section's .txt,
-status: ready (or error)             ask model to answer from it
-                                   4. if model replies "need more
-                                      info", drop that section and
-                                      retry (up to max_sections)
-                                   5. otherwise return the answer
-                                      + list of sections_checked
+   ▼                         GEMINI_API_KEY set?
+PyMuPDF4LLM.to_markdown()      │              │
+   │                          yes             no
+   ▼                           │              │
+split_markdown_by_headings()   ▼              ▼
+   │                   answer_question_via_adk()   find_retrieve_answer()
+   ▼                     ADK Agent (Gemini) +         get_or_load_model()
+sections/<name>.txt × N  read_section tool:           (Llama.cpp GGUF, cached
+(+ _full_text.md for       1. agent decides which       in-process)
+ debug)                        section(s) to read         1. ask model: which
+   │                       2. tool fuzzy-matches             section_name best
+   ▼                          the name + returns               matches the
+status: ready (or error)     content                          question?
+                            3. agent answers from           2. rapidfuzz-match
+                               retrieved text, may              reply to real
+                               call the tool again up           section names
+                               to max_sections_to_check       3. read that
+                            4. returns answer +                section's .txt,
+                               sections_checked                 ask model to
+                                                                 answer from it
+                                                              4. "need more
+                                                                 info" → drop
+                                                                 section, retry
+                                                              5. return answer
+                                                                 + sections_checked
 ```
+
+Both engines return the same `(answer, sections_checked)` shape, so
+`api/documents.py` picks one per request with no other branching.
 
 ### Components (`backend/app/services/document_qa/`)
 
 | File | Responsibility |
 |------|-----------------|
 | `preprocessing.py` | `document_to_sections_dir()` — PyMuPDF4LLM extraction + `split_markdown_by_headings()` (regex on `#`/`##`/`###`/`####` and bold-numbered headings) |
-| `model_loader.py` | `get_or_load_model()` — loads a GGUF model via `llama_cpp.Llama.from_pretrained`, process-wide cache keyed by `model_id`, auto-detects GPU via `nvidia-smi` |
-| `workflow.py` | `find_retrieve_answer()` — the find→retrieve→answer loop; `get_matching_section()` does the rapidfuzz fuzzy match |
-| `config.py` | `FIND_PROMPT` / `ANSWER_PROMPT` templates, validated to contain their required placeholders |
+| `adk_agent.py` | **PRIMARY.** `answer_question_via_adk()` — builds a Google ADK `Agent` (model `gemini-2.5-flash`) with a `read_section` function tool; an ADK `InMemoryRunner` drives the agent's own tool-calling reasoning loop instead of a hand-rolled while-loop. The tool enforces `max_sections_to_check` itself (returns an error once the cap is hit) since the agent — not this code — decides when to call it |
+| `model_loader.py` | **FALLBACK** (no `GEMINI_API_KEY`). `get_or_load_model()` — loads a GGUF model via `llama_cpp.Llama.from_pretrained`, process-wide cache keyed by `model_id`, auto-detects GPU via `nvidia-smi` |
+| `workflow.py` | **FALLBACK.** `find_retrieve_answer()` — the manual find→retrieve→answer loop; `get_matching_section()` does the rapidfuzz fuzzy match |
+| `config.py` | `FIND_PROMPT` / `ANSWER_PROMPT` templates for the fallback engine, validated to contain their required placeholders |
 
 ### Default model
 
-`bartowski/Qwen2.5-7B-Instruct-GGUF/Qwen2.5-7B-Instruct-Q8_0.gguf` (the
-Blueprint's default 7B model) — downloaded once to `~/.cache/huggingface` on
-first request, then served from the in-memory cache. Configurable via
+Primary engine: `gemini-2.5-flash` via the ADK agent (`adk_agent.AGENT_MODEL`),
+requiring `GEMINI_API_KEY`.
+
+Fallback engine: `bartowski/Qwen2.5-7B-Instruct-GGUF/Qwen2.5-7B-Instruct-Q8_0.gguf`
+(the Blueprint's default 7B model) — downloaded once to `~/.cache/huggingface`
+on first request, then served from the in-memory cache. Configurable via
 `DOCUMENT_QA_MODEL`. CPU inference works but is slow; a GPU is used
 automatically when `nvidia-smi` succeeds.
 
@@ -901,7 +918,9 @@ DEBUG=false
 MAX_DEBATE_AGENTS=6
 FREE_TIER_DAILY_LIMIT=3
 
-# Local document Q&A (no API key — runs on this host via llama-cpp-python)
+# Document Q&A — primary engine uses GEMINI_API_KEY above (Google ADK agent).
+# Vars below only matter for the fallback engine (no GEMINI_API_KEY — runs
+# fully offline on this host via llama-cpp-python)
 DOCUMENT_QA_MODEL=bartowski/Qwen2.5-7B-Instruct-GGUF/Qwen2.5-7B-Instruct-Q8_0.gguf
 DOCUMENT_QA_MAX_SECTIONS=20
 DOCUMENT_QA_STORAGE_DIR=./document_qa_storage

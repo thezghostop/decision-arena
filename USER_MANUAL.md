@@ -77,9 +77,16 @@ Access all past debates from the **History** page. Click any debate to review th
 
 ## Document Q&A
 
-The **Documents** tab lets you upload a document and ask questions about it,
-answered entirely on the server with no external API key — your file never
-leaves the platform's infrastructure.
+The **Documents** tab lets you upload a document and ask questions about it.
+Answers come from an AI agent that reads the document section by section and
+answers strictly from what it finds — it never makes anything up or answers
+from general knowledge.
+
+By default this agent uses Google Gemini (the platform's own API key — you
+don't need to provide one). If the server has no Gemini key configured, it
+falls back automatically to a local model that runs entirely on the server
+with no external API calls at all; either way, your file never leaves the
+platform's infrastructure.
 
 ### 1. Upload a Document
 Go to **Documents** and drag in (or click to select) a file: PDF, DOCX, TXT,
@@ -92,10 +99,11 @@ been split into sections, status changes to **Ready**. If extraction fails
 (e.g. an unreadable scan), status changes to **Error**.
 
 ### 3. Ask Questions
-Open a **Ready** document and type a question in the box. The first answer on
-a fresh server may take a while — the local model has to load (and download,
-on its very first use). After that, answers come back as fast as the model
-can generate them.
+Open a **Ready** document and type a question in the box. On the default
+Gemini-backed path, answers come back as fast as Gemini can generate them.
+On the local fallback path, the first answer on a fresh server may take a
+while — the local model has to load (and download, on its very first use).
+After that, answers come back as fast as that model can generate them.
 
 ### 4. Review Past Answers
 Each answer shows which section(s) of the document were checked to produce
