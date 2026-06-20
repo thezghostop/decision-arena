@@ -221,7 +221,9 @@ def _map_debate(d: dict) -> DebateResponse:
         panel=[AgentConfig(**p) if isinstance(p, dict) else p for p in d.get("panel", [])],
         current_stage=d.get("current_stage", "opening"),
         audience_questions=d.get("audience_questions", []),
-        created_at=d["created_at"] if isinstance(d["created_at"], datetime) else datetime.fromisoformat(d["created_at"]),
+        created_at=(
+            d["created_at"] if isinstance(d["created_at"], datetime) else datetime.fromisoformat(d["created_at"])
+        ),
         completed_at=d.get("completed_at"),
     )
 
@@ -240,7 +242,9 @@ def _map_message(m: dict) -> DebateMessageResponse:
         fallacies=m.get("fallacies", []),
         fact_tags=m.get("fact_tags", []),
         sequence_num=m.get("sequence_num", 0),
-        created_at=m["created_at"] if isinstance(m["created_at"], datetime) else datetime.fromisoformat(m["created_at"]),
+        created_at=(
+            m["created_at"] if isinstance(m["created_at"], datetime) else datetime.fromisoformat(m["created_at"])
+        ),
     )
 
 

@@ -251,7 +251,9 @@ def _map_document(d: dict) -> DocumentResponse:
         status=d["status"],
         num_sections=d.get("num_sections", 0),
         error_message=d.get("error_message"),
-        created_at=d["created_at"] if isinstance(d["created_at"], datetime) else datetime.fromisoformat(d["created_at"]),
+        created_at=(
+            d["created_at"] if isinstance(d["created_at"], datetime) else datetime.fromisoformat(d["created_at"])
+        ),
     )
 
 
@@ -262,5 +264,7 @@ def _map_question(q: dict) -> DocumentQuestionResponse:
         question=q["question"],
         answer=q["answer"],
         sections_checked=q.get("sections_checked", []),
-        created_at=q["created_at"] if isinstance(q["created_at"], datetime) else datetime.fromisoformat(q["created_at"]),
+        created_at=(
+            q["created_at"] if isinstance(q["created_at"], datetime) else datetime.fromisoformat(q["created_at"])
+        ),
     )
